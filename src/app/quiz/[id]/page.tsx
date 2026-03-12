@@ -20,7 +20,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import CardForm from '@/components/quiz/CardForm'
-import AIGenerateDialog from '@/components/ai/AIGenerateDialog'
+import AIChatDialog from '@/components/ai/AIChatDialog'
 import {
   ArrowLeft,
   BookOpen,
@@ -299,12 +299,12 @@ export default function QuizDetailPage() {
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold">Cards ({cards.length})</h2>
             {isOwner && (
-              <AIGenerateDialog quizId={quiz.id} onCardsGenerated={handleAICards}>
+              <AIChatDialog quizId={quiz.id} onCardsGenerated={handleAICards}>
                 <Button variant="outline" className="gap-2">
                   <Sparkles className="h-4 w-4 text-violet-500" />
-                  Generate with AI
+                  Generera med AI
                 </Button>
-              </AIGenerateDialog>
+              </AIChatDialog>
             )}
           </div>
 
