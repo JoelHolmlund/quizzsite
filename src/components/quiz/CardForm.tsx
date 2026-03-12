@@ -207,7 +207,7 @@ export default function CardForm({
                   id={`correct-${i}`}
                   checked={entry.isCorrect}
                   onCheckedChange={() => toggleCorrect(i)}
-                  className="data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500 flex-shrink-0"
+                  className="data-checked:bg-emerald-500 data-checked:border-emerald-500 flex-shrink-0"
                 />
                 <Input
                   placeholder={`Alternativ ${i + 1}`}

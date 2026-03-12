@@ -277,14 +277,14 @@ export default function QuizMode({ cards }: QuizModeProps) {
                 <div className="flex items-center gap-3">
                   <Checkbox
                     checked={isMultiAnswered ? isCorrect : isChecked}
-                    readOnly
+                    onCheckedChange={() => {}}
                     className={cn(
                       'flex-shrink-0 pointer-events-none',
                       isMultiAnswered && isCorrect
-                        ? 'data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500'
+                        ? 'data-checked:bg-emerald-500 data-checked:border-emerald-500'
                         : isMultiAnswered && isChecked && !isCorrect
-                        ? 'data-[state=checked]:bg-red-500 data-[state=checked]:border-red-500'
-                        : 'data-[state=checked]:bg-violet-600 data-[state=checked]:border-violet-600'
+                        ? 'data-checked:bg-red-500 data-checked:border-red-500'
+                        : 'data-checked:bg-violet-600 data-checked:border-violet-600'
                     )}
                   />
                   <span className="flex-1 text-left">
