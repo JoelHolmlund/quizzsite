@@ -25,20 +25,36 @@ Rules:
 - Shuffle the options array so the correct answer is not always first
 - Return ONLY valid JSON, no markdown, no extra text
 
-MATH FORMATTING RULES (very important):
-- All mathematical expressions MUST use LaTeX syntax so they render correctly with KaTeX
-- Inline math: wrap in single dollar signs, e.g. $x^2$, $\\frac{dy}{dx}$, $\\sqrt{x}$
-- Block/display math (for standalone equations): wrap in double dollar signs, e.g. $$y = x^3 \\ln(x)$$
-- NEVER use plain text for math: write $x^2$ not x^2, $\\frac{a}{b}$ not a/b, $\\sqrt{x}$ not sqrt(x)
-- Greek letters: $\\alpha$, $\\beta$, $\\pi$, $\\theta$, $\\omega$, $\\Delta$, $\\Sigma$, etc.
-- Fractions: $\\frac{numerator}{denominator}$
-- Integrals: $\\int_a^b f(x)\\,dx$
-- Limits: $\\lim_{x \\to 0}$
-- Sums: $\\sum_{i=1}^{n}$
-- Superscripts: $x^{n}$, subscripts: $x_{n}$
-- Absolute value: $|x|$ or $\\lvert x \\rvert$
-- Example question: "What is the derivative of $f(x) = x^3 \\ln(x)$?"
-- Example answer: "Using the product rule: $$f'(x) = 3x^2 \\ln(x) + x^2$$"`
+MATH FORMATTING — CRITICAL, NO EXCEPTIONS:
+Every single mathematical expression, symbol, variable, or formula MUST be wrapped in LaTeX delimiters.
+NEVER write raw math outside of $ or $$ delimiters.
+
+JSON ESCAPING: Since the output is JSON, ALL backslashes in LaTeX MUST be doubled.
+Write \\\\frac not \\frac, \\\\neq not \\neq, \\\\begin not \\begin, etc.
+
+Delimiters:
+- Inline math (variables, short expressions): $x^2$, $\\\\frac{dy}{dx}$, $\\\\sqrt{x}$, $\\\\neq$, $\\\\alpha$
+- Display/block math (full equations, piecewise, alignments): $$y = x^3 \\\\ln(x)$$
+
+Piecewise functions MUST use display math ($$...$$):
+  $$f(x) = \\\\begin{cases} x^2, & x < 0 \\\\\\\\ 2x, & x \\\\geq 0 \\\\end{cases}$$
+
+NEVER do this (raw LaTeX without delimiters):
+  BAD:  f(x) \\neq 0
+  BAD:  \\text{cos}(x)
+  BAD:  \\begin{cases} ... \\end{cases}
+  GOOD: $f(x) \\\\neq 0$
+  GOOD: $\\\\cos(x)$
+  GOOD: $$\\\\begin{cases} ... \\\\end{cases}$$
+
+More examples:
+- Fractions:   $\\\\frac{a}{b}$
+- Integrals:   $\\\\int_a^b f(x)\\\\,dx$
+- Limits:      $\\\\lim_{x \\\\to 0} \\\\frac{\\\\sin x}{x} = 1$
+- Greek:       $\\\\alpha$, $\\\\beta$, $\\\\pi$, $\\\\theta$, $\\\\Delta$, $\\\\Sigma$
+- Operators:   $a \\\\neq b$, $a \\\\leq b$, $a \\\\approx b$, $a \\\\in A$
+- Example Q:   "Vad är derivatan av $f(x) = x^3 \\\\ln(x)$?"
+- Example A:   "Med produktregeln: $$f'(x) = 3x^2 \\\\ln(x) + x^2$$"`
 
 export async function POST(request: NextRequest) {
   // Auth check
@@ -104,10 +120,14 @@ export async function POST(request: NextRequest) {
       max_tokens: 4000,
     })
 
-    const responseText = completion.choices[0]?.message?.content
-    if (!responseText) {
+    const rawResponse = completion.choices[0]?.message?.content
+    if (!rawResponse) {
       return NextResponse.json({ error: 'No response from AI' }, { status: 500 })
     }
+
+    // Fix single backslashes before letters (e.g. \frac → \\frac) so JSON.parse
+    // doesn't eat them as control characters (\f = form feed, \t = tab, etc.)
+    const responseText = rawResponse.replace(/(?<!\\)\\([a-zA-Z])/g, '\\\\$1')
 
     const parsed = JSON.parse(responseText)
     const cards = parsed.cards ?? parsed

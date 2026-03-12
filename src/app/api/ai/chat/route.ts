@@ -29,26 +29,30 @@ Rules:
 - If the user asks to focus on a topic, only generate cards about that topic
 - Keep answers concise
 
-MATH FORMATTING — CRITICAL RULES:
-Since your output is a JSON string, ALL LaTeX backslashes MUST be doubled (\\).
-A single backslash like \frac is INVALID in JSON and will break rendering.
-You MUST write \\frac, \\lim, \\to, \\tan, \\sin, \\cos, \\int, \\sum, \\sqrt, \\text, \\frac, \\alpha, \\beta, \\pi etc.
+MATH FORMATTING — CRITICAL, NO EXCEPTIONS:
+Every mathematical symbol, variable, expression, or formula MUST be wrapped in $ or $$.
+NEVER output raw LaTeX commands outside of math delimiters.
 
-Correct examples (double backslash, ALWAYS inside $ or $$):
-- Fraction: $\\frac{dy}{dx}$
-- Limit: $\\lim_{x \\to 0}$
-- Integral: $\\int_a^b f(x)\\,dx$
-- Square root: $\\sqrt{x}$
-- Trig: $\\tan(x)$, $\\sin(x)$, $\\cos(x)$
-- Greek: $\\alpha$, $\\beta$, $\\pi$, $\\theta$, $\\Delta$, $\\Sigma$
-- Display math block (equations on their own line): $$y = x^3 \\ln(x)$$
-- Piecewise / cases (MUST use $$ not $): $$f(x) = \\begin{cases} x^2, & x \\neq 0 \\\\ 0, & x = 0 \\end{cases}$$
-- NEVER write \\begin{cases} or \\begin{align} outside of $$...$$
+JSON ESCAPING: Output is JSON, so ALL LaTeX backslashes must be doubled.
+Write \\frac not \frac, \\neq not \neq, \\begin not \begin, etc.
 
-WRONG (will break): $\frac{dy}{dx}$, $\lim_{x \to 0}$, $\sqrt{x}$
-CORRECT: $\\frac{dy}{dx}$, $\\lim_{x \\to 0}$, $\\sqrt{x}$
+Delimiters:
+- Inline: $x^2$, $\\frac{dy}{dx}$, $\\sqrt{x}$, $\\neq$, $\\alpha$
+- Display (full equations, MUST use $$ for piecewise/align/matrix):
+    $$y = x^3 \\ln(x)$$
+    $$f(x) = \\begin{cases} x^2, & x < 0 \\\\ 2x, & x \\geq 0 \\end{cases}$$
 
-NEVER use plain text for math: write $x^2$ not x^2, $\\frac{a}{b}$ not a/b`
+NEVER do this:
+  BAD:  f(x) \neq 0          → GOOD: $f(x) \\neq 0$
+  BAD:  \text{cos}(x)        → GOOD: $\\cos(x)$
+  BAD:  \begin{cases}...     → GOOD: $$\\begin{cases}...\\end{cases}$$
+
+More patterns:
+- Fractions: $\\frac{a}{b}$
+- Limits:    $\\lim_{x \\to 0}$
+- Integrals: $\\int_a^b f(x)\\,dx$
+- Greek:     $\\alpha$, $\\beta$, $\\pi$, $\\Delta$, $\\Sigma$
+- Relations: $a \\neq b$, $a \\leq b$, $x \\in A$, $a \\approx b$`
 
 export type ChatMessage = {
   role: 'user' | 'assistant'

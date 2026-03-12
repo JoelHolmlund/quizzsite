@@ -12,40 +12,99 @@ interface MathContentProps {
   variant?: 'prose' | 'compact'
 }
 
+// ─── Step 5 helper ────────────────────────────────────────────────────────────
+// LaTeX commands that should NEVER appear in plain prose — always math.
+// Includes relations, operators, functions, environments, Greek letters, etc.
+const BARE_MATH_CMD_RE =
+  /\\(?!begin\b|end\b)(?:frac|sqrt|sum|int|oint|prod|lim|limsup|liminf|max|min|sup|inf|det|dim|deg|gcd|ln|log|sin|cos|tan|cot|sec|csc|arcsin|arccos|arctan|sinh|cosh|tanh|exp|to|gets|rightarrow|leftarrow|leftrightarrow|Rightarrow|Leftarrow|Leftrightarrow|implies|iff|neq|leq|geq|ne|le|ge|ll|gg|approx|equiv|sim|simeq|cong|propto|in|notin|subset|supset|subseteq|supseteq|forall|exists|pm|mp|times|cdot|div|infty|partial|nabla|ldots|cdots|vdots|ddots|alpha|beta|gamma|delta|epsilon|varepsilon|zeta|eta|theta|vartheta|iota|kappa|lambda|mu|nu|xi|pi|varpi|rho|varrho|sigma|varsigma|tau|upsilon|phi|varphi|chi|psi|omega|Gamma|Delta|Theta|Lambda|Xi|Pi|Sigma|Upsilon|Phi|Psi|Omega|text|mathrm|mathbf|mathit|mathbb|mathcal|vec|hat|bar|tilde|dot|ddot|widehat|widetilde|overline|underline|left|right|mid|parallel|perp|angle|circ|quad|qquad|Re|Im|wp)\b/
+
 /**
- * Normalise various LaTeX delimiter styles that AIs commonly produce so that
- * remark-math (which only understands $…$ and $$…$$) can render them.
+ * In a plain-text segment (already confirmed to be outside any $…$ block),
+ * find bare LaTeX commands and wrap each command (plus attached curly-arg
+ * groups and surrounding non-space chars) in $…$.
  *
- * Conversions applied (in order):
- *  1. \[…\]  → $$…$$   (display math)
- *  2. \(…\)  → $…$     (inline math)
- *  3. bare \begin{…}…\end{…} blocks not already inside $…$ → $$…$$
+ * e.g.  "a \neq b"  →  "$a$ $\neq$ $b$"  (not perfect grouping, but renders)
+ *       "f(x)\neq 0" →  "$f(x)\neq$ $0$"
+ *       "\text{cos}" →  "$\text{cos}$"
+ */
+function wrapBareLatexInSegment(segment: string): string {
+  if (!BARE_MATH_CMD_RE.test(segment)) return segment
+  BARE_MATH_CMD_RE.lastIndex = 0
+
+  // Match: optional leading non-space math chars + \command + optional {arg}{arg}
+  //        + optional trailing non-space chars
+  // This keeps e.g. "f(x)\neq" as a single atom.
+  return segment.replace(
+    /[a-zA-Z0-9()\[\]^_{}'+\-.*]*\\(?!begin\b|end\b)[a-zA-Z]+(?:\{[^}]*\}(?:\{[^}]*\})?)?[a-zA-Z0-9()\[\]^_{}'+\-.]*/g,
+    (match) => `$${match}$`,
+  )
+}
+
+/**
+ * Split `text` by existing $$…$$ and $…$ math blocks, apply
+ * `wrapBareLatexInSegment` only to the plain-text parts, then rejoin.
+ */
+function applyBareMathFallback(text: string): string {
+  // Match $$ blocks first (longer), then single $ blocks
+  const mathRe = /\$\$[\s\S]*?\$\$|\$(?!\$)[^$\n]*?\$(?!\$)/g
+  const segments: { text: string; isMath: boolean }[] = []
+  let lastIndex = 0
+  let m: RegExpExecArray | null
+
+  while ((m = mathRe.exec(text)) !== null) {
+    if (m.index > lastIndex) {
+      segments.push({ text: text.slice(lastIndex, m.index), isMath: false })
+    }
+    segments.push({ text: m[0], isMath: true })
+    lastIndex = m.index + m[0].length
+  }
+  if (lastIndex < text.length) {
+    segments.push({ text: text.slice(lastIndex), isMath: false })
+  }
+
+  return segments
+    .map((s) => (s.isMath ? s.text : wrapBareLatexInSegment(s.text)))
+    .join('')
+}
+
+// ─── Main normaliser ──────────────────────────────────────────────────────────
+/**
+ * Normalise various LaTeX delimiter styles so remark-math can render them.
+ *
+ * Steps (in order):
+ *  1. \[…\]   → $$…$$           (display math)
+ *  2. \(…\)   → $…$             (inline math)
+ *  3. Single $…$ containing \begin{env}…\end{env} → $$…$$  (upgrade to display)
+ *  4. Bare \begin{env}…\end{env} not already in $$ → $$…$$
+ *  5. Remaining bare \LaTeX{} commands in plain text → $…$  (safety net)
  */
 function normaliseMathDelimiters(text: string): string {
-  // 1. \[…\] → $$…$$  (display math — no risk of double-wrapping)
+  // 1. \[…\] → $$…$$
   text = text.replace(/\\\[([\s\S]*?)\\\]/g, (_m, inner: string) => `\n$$\n${inner}\n$$\n`)
 
-  // 2. \(…\) → $…$  (inline math)
+  // 2. \(…\) → $…$
   text = text.replace(/\\\(([\s\S]*?)\\\)/g, (_m, inner: string) => `$${inner}$`)
 
-  // 3. Upgrade SINGLE $…$ (not $$…$$) that contains \begin{env} to $$…$$
-  //    (?<!\$)\$(?!\$) matches a lone $ that is NOT part of $$
-  //    This avoids mangling text that is already correctly wrapped in $$…$$
+  // 3. Single $…$ containing \begin{env}…\end{env} → $$…$$
+  //    (?<!\$)\$(?!\$) = lone $ not part of $$
   text = text.replace(
     /(?<!\$)\$(?!\$)([^$]*\\begin\{[^}]+\}[\s\S]*?\\end\{[^}]+\}[^$]*)(?<!\$)\$(?!\$)/g,
     (_m, inner: string) => `\n$$\n${inner}\n$$\n`,
   )
 
-  // 4. Bare \begin{env}…\end{env} not inside any $ — wrap in $$…$$
-  //    Guard: skip if immediately preceded by \n$$ (already wrapped by steps above)
+  // 4. Bare \begin{env}…\end{env} not inside any $ → $$…$$
   text = text.replace(
     /(?<!\$)(\\begin\{[^}]+\}[\s\S]*?\\end\{[^}]+\})(?!\$)/g,
     (_m, inner: string) => `\n$$\n${inner}\n$$\n`,
   )
 
+  // 5. Safety net: wrap any remaining bare \LaTeXCommand in plain text with $…$
+  text = applyBareMathFallback(text)
+
   return text
 }
 
+// ─── Component ────────────────────────────────────────────────────────────────
 export default function MathContent({
   children,
   className,
@@ -64,7 +123,6 @@ export default function MathContent({
       <ReactMarkdown
         remarkPlugins={[remarkMath]}
         rehypePlugins={[rehypeKatex]}
-        // Pass normalised content instead of raw children
         // eslint-disable-next-line react/no-children-prop
         children={content}
         components={{
@@ -86,7 +144,6 @@ export default function MathContent({
           ),
         }}
       />
-
     </div>
   )
 }

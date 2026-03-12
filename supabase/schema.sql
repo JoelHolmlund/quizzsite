@@ -98,7 +98,8 @@ CREATE POLICY "Users can insert own profile"
   ON profiles FOR INSERT
   WITH CHECK (auth.uid() = id);
 
--- Quizzes: owner has full access; public quizzes are readable by anyone
+-- Quizzes: owner has full CRUD; anyone can READ any quiz by direct link.
+-- "Private" only means the quiz is hidden from the Explore feed — not from direct URL access.
 DROP POLICY IF EXISTS "Users can CRUD own quizzes" ON quizzes;
 CREATE POLICY "Users can CRUD own quizzes"
   ON quizzes FOR ALL
@@ -106,11 +107,12 @@ CREATE POLICY "Users can CRUD own quizzes"
   WITH CHECK (auth.uid() = user_id);
 
 DROP POLICY IF EXISTS "Public quizzes are viewable by all" ON quizzes;
-CREATE POLICY "Public quizzes are viewable by all"
+DROP POLICY IF EXISTS "Anyone can view any quiz by direct link" ON quizzes;
+CREATE POLICY "Anyone can view any quiz by direct link"
   ON quizzes FOR SELECT
-  USING (is_public = TRUE);
+  USING (true);
 
--- Cards: owner can CRUD; cards of public quizzes are readable by all
+-- Cards: owner can CRUD; anyone can read cards of any quiz they can already see
 DROP POLICY IF EXISTS "Users can CRUD cards in own quizzes" ON cards;
 CREATE POLICY "Users can CRUD cards in own quizzes"
   ON cards FOR ALL
@@ -126,13 +128,10 @@ CREATE POLICY "Users can CRUD cards in own quizzes"
   );
 
 DROP POLICY IF EXISTS "Cards of public quizzes are viewable by all" ON cards;
-CREATE POLICY "Cards of public quizzes are viewable by all"
+DROP POLICY IF EXISTS "Anyone can view cards by direct link" ON cards;
+CREATE POLICY "Anyone can view cards by direct link"
   ON cards FOR SELECT
-  USING (
-    quiz_id IN (
-      SELECT id FROM quizzes WHERE is_public = TRUE
-    )
-  );
+  USING (true);
 
 -- Quiz likes: logged-in users can like/unlike; likes are visible to all
 DROP POLICY IF EXISTS "Anyone can view likes" ON quiz_likes;
