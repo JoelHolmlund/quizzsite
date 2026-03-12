@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS quizzes (
   description TEXT,
   is_public BOOLEAN DEFAULT FALSE NOT NULL,
   card_count INTEGER DEFAULT 0 NOT NULL,
+  like_count INTEGER DEFAULT 0 NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
   updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
 );
@@ -50,12 +51,26 @@ CREATE TABLE IF NOT EXISTS cards (
 );
 
 -- ============================================================
+-- QUIZ LIKES TABLE
+-- ============================================================
+CREATE TABLE IF NOT EXISTS quiz_likes (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  quiz_id UUID REFERENCES quizzes(id) ON DELETE CASCADE NOT NULL,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+  UNIQUE(quiz_id, user_id)
+);
+
+-- ============================================================
 -- INDEXES
 -- ============================================================
 CREATE INDEX IF NOT EXISTS quizzes_user_id_idx ON quizzes(user_id);
 CREATE INDEX IF NOT EXISTS quizzes_is_public_idx ON quizzes(is_public);
+CREATE INDEX IF NOT EXISTS quizzes_like_count_idx ON quizzes(like_count DESC);
 CREATE INDEX IF NOT EXISTS cards_quiz_id_idx ON cards(quiz_id);
 CREATE INDEX IF NOT EXISTS cards_position_idx ON cards(quiz_id, position);
+CREATE INDEX IF NOT EXISTS quiz_likes_quiz_id_idx ON quiz_likes(quiz_id);
+CREATE INDEX IF NOT EXISTS quiz_likes_user_id_idx ON quiz_likes(user_id);
 
 -- ============================================================
 -- ROW LEVEL SECURITY (RLS)
@@ -63,31 +78,38 @@ CREATE INDEX IF NOT EXISTS cards_position_idx ON cards(quiz_id, position);
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE quizzes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE cards ENABLE ROW LEVEL SECURITY;
+ALTER TABLE quiz_likes ENABLE ROW LEVEL SECURITY;
 
 -- Profiles: users can only read/write their own profile
+DROP POLICY IF EXISTS "Users can view own profile" ON profiles;
 CREATE POLICY "Users can view own profile"
   ON profiles FOR SELECT
   USING (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Users can update own profile" ON profiles;
 CREATE POLICY "Users can update own profile"
   ON profiles FOR UPDATE
   USING (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Users can insert own profile" ON profiles;
 CREATE POLICY "Users can insert own profile"
   ON profiles FOR INSERT
   WITH CHECK (auth.uid() = id);
 
 -- Quizzes: owner has full access; public quizzes are readable by anyone
+DROP POLICY IF EXISTS "Users can CRUD own quizzes" ON quizzes;
 CREATE POLICY "Users can CRUD own quizzes"
   ON quizzes FOR ALL
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Public quizzes are viewable by all" ON quizzes;
 CREATE POLICY "Public quizzes are viewable by all"
   ON quizzes FOR SELECT
   USING (is_public = TRUE);
 
 -- Cards: owner can CRUD; cards of public quizzes are readable by all
+DROP POLICY IF EXISTS "Users can CRUD cards in own quizzes" ON cards;
 CREATE POLICY "Users can CRUD cards in own quizzes"
   ON cards FOR ALL
   USING (
@@ -101,6 +123,7 @@ CREATE POLICY "Users can CRUD cards in own quizzes"
     )
   );
 
+DROP POLICY IF EXISTS "Cards of public quizzes are viewable by all" ON cards;
 CREATE POLICY "Cards of public quizzes are viewable by all"
   ON cards FOR SELECT
   USING (
@@ -108,6 +131,22 @@ CREATE POLICY "Cards of public quizzes are viewable by all"
       SELECT id FROM quizzes WHERE is_public = TRUE
     )
   );
+
+-- Quiz likes: logged-in users can like/unlike; likes are visible to all
+DROP POLICY IF EXISTS "Anyone can view likes" ON quiz_likes;
+CREATE POLICY "Anyone can view likes"
+  ON quiz_likes FOR SELECT
+  USING (TRUE);
+
+DROP POLICY IF EXISTS "Users can like quizzes" ON quiz_likes;
+CREATE POLICY "Users can like quizzes"
+  ON quiz_likes FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can unlike quizzes" ON quiz_likes;
+CREATE POLICY "Users can unlike quizzes"
+  ON quiz_likes FOR DELETE
+  USING (auth.uid() = user_id);
 
 -- ============================================================
 -- FUNCTIONS & TRIGGERS
@@ -173,3 +212,22 @@ $$;
 CREATE OR REPLACE TRIGGER cards_count_trigger
   AFTER INSERT OR DELETE ON cards
   FOR EACH ROW EXECUTE FUNCTION public.update_quiz_card_count();
+
+-- Auto-maintain like_count on quizzes
+CREATE OR REPLACE FUNCTION public.update_quiz_like_count()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    UPDATE quizzes SET like_count = like_count + 1 WHERE id = NEW.quiz_id;
+  ELSIF TG_OP = 'DELETE' THEN
+    UPDATE quizzes SET like_count = GREATEST(like_count - 1, 0) WHERE id = OLD.quiz_id;
+  END IF;
+  RETURN NULL;
+END;
+$$;
+
+CREATE OR REPLACE TRIGGER quiz_likes_count_trigger
+  AFTER INSERT OR DELETE ON quiz_likes
+  FOR EACH ROW EXECUTE FUNCTION public.update_quiz_like_count();

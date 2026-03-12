@@ -6,6 +6,7 @@ import CreateQuizDialog from '@/components/quiz/CreateQuizDialog'
 import { Button } from '@/components/ui/button'
 import { BookOpen, Plus } from 'lucide-react'
 import type { Profile, Quiz } from '@/types/database'
+import type { QuizCreator } from '@/components/quiz/QuizCard'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -98,7 +99,13 @@ export default async function DashboardPage() {
             <h2 className="text-lg font-semibold mb-4">Your quizzes</h2>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {quizzes.map((quiz) => (
-                <QuizCard key={quiz.id} quiz={quiz} showActions />
+                <QuizCard
+                  key={quiz.id}
+                  quiz={quiz}
+                  showActions
+                  userId={user.id}
+                  creator={profile as QuizCreator | null}
+                />
               ))}
             </div>
           </div>

@@ -78,13 +78,15 @@ export async function POST(request: NextRequest) {
         try {
           const arrayBuffer = await file.arrayBuffer()
           const buffer = Buffer.from(arrayBuffer)
+          // Use the internal lib path to avoid pdf-parse's test file loader
           // eslint-disable-next-line @typescript-eslint/no-require-imports
-          const pdfParse = require('pdf-parse')
+          const pdfParse = require('pdf-parse/lib/pdf-parse.js')
           const parsed = await pdfParse(buffer)
           fileContent = parsed.text
-        } catch {
+        } catch (pdfErr) {
+          console.error('PDF parse error:', pdfErr)
           return NextResponse.json(
-            { error: 'Could not read PDF. Try pasting the text instead.' },
+            { error: 'Kunde inte läsa PDF-filen. Prova att kopiera och klistra in texten istället.' },
             { status: 400 }
           )
         }
