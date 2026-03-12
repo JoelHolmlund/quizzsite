@@ -22,10 +22,11 @@ interface MathContentProps {
  *  3. bare \begin{…}…\end{…} blocks not already inside $…$ → $$…$$
  */
 function normaliseMathDelimiters(text: string): string {
-  // 1. Upgrade $\begin{env}…\end{env}$ (inline) → $$…$$ (display)
-  //    Environments like cases/align/pmatrix MUST be in display mode or KaTeX errors.
+  // 1. Upgrade any $…$ that CONTAINS \begin{env}…\end{env} to $$…$$
+  //    Matches: $\begin{cases}…$ AND $f(x) = \begin{cases}…$ (content before \begin)
+  //    [^$]* allows arbitrary text before \begin, [^$]* allows text after \end.
   text = text.replace(
-    /\$(\\begin\{[^}]+\}[\s\S]*?\\end\{[^}]+\})\$/g,
+    /\$([^$]*\\begin\{[^}]+\}[\s\S]*?\\end\{[^}]+\}[^$]*)\$/g,
     (_m, inner: string) => `\n$$\n${inner}\n$$\n`,
   )
 
@@ -35,9 +36,11 @@ function normaliseMathDelimiters(text: string): string {
   // 3. \(…\) → $…$  (inline math)
   text = text.replace(/\\\(([\s\S]*?)\\\)/g, (_m, inner: string) => `$${inner}$`)
 
-  // 4. Bare \begin{env}…\end{env} not already inside any $ → $$…$$
+  // 4. Bare \begin{env}…\end{env} NOT already inside $$…$$
+  //    After step 1 the remaining ones are truly unwrapped — wrap them now.
+  //    Guard: only match when NOT directly preceded by $$ (already handled).
   text = text.replace(
-    /(?<!\$)(\\begin\{[^}]+\}[\s\S]*?\\end\{[^}]+\})(?!\$)/g,
+    /(?<!\$\$\n?)(\\begin\{[^}]+\}[\s\S]*?\\end\{[^}]+\})/g,
     (_m, inner: string) => `\n$$\n${inner}\n$$\n`,
   )
 
