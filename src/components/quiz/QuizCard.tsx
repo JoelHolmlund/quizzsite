@@ -96,12 +96,12 @@ export default function QuizCard({
       <Card className="group hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 border-border/60 flex flex-col">
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between gap-2">
-            <Link href={`/quiz/${quiz.id}`} className="flex-1 min-w-0">
+            <Link href={`/quiz/${quiz.id}`} className="flex-1 min-w-0 overflow-hidden">
               <h3 className="font-semibold text-base leading-tight truncate group-hover:text-violet-600 transition-colors">
                 {quiz.title}
               </h3>
             </Link>
-            <div className="flex items-center gap-1 flex-shrink-0">
+            <div className="flex items-center gap-1 flex-none">
               <Badge variant={quiz.is_public ? 'default' : 'secondary'} className="text-xs gap-1">
                 {quiz.is_public ? (
                   <><Globe className="h-3 w-3" /> Publik</>
