@@ -4,7 +4,7 @@ import Navbar from '@/components/layout/Navbar'
 import QuizCard from '@/components/quiz/QuizCard'
 import CreateQuizDialog from '@/components/quiz/CreateQuizDialog'
 import { Button } from '@/components/ui/button'
-import { BookOpen, Plus } from 'lucide-react'
+import { BookOpen, Bookmark, Plus } from 'lucide-react'
 import type { Profile, Quiz } from '@/types/database'
 import type { QuizCreator } from '@/components/quiz/QuizCard'
 
@@ -30,6 +30,40 @@ export default async function DashboardPage() {
     .eq('user_id', user.id)
     .order('updated_at', { ascending: false })
   const quizzes = quizzesData as Quiz[] | null
+
+  // Fetch bookmarked quizzes (other users' quizzes the current user has saved)
+  const { data: bookmarkRows } = await supabase
+    .from('quiz_bookmarks')
+    .select('quiz_id')
+    .eq('user_id', user.id)
+
+  const bookmarkedQuizIds = new Set((bookmarkRows ?? []).map((b: { quiz_id: string }) => b.quiz_id))
+
+  let bookmarkedQuizzes: Quiz[] = []
+  if (bookmarkedQuizIds.size > 0) {
+    const { data: bqData } = await supabase
+      .from('quizzes')
+      .select('*')
+      .in('id', Array.from(bookmarkedQuizIds))
+      .neq('user_id', user.id) // exclude own quizzes
+      .order('created_at', { ascending: false })
+    bookmarkedQuizzes = (bqData ?? []) as Quiz[]
+  }
+
+  // Fetch creator profiles for bookmarked quizzes
+  const bookmarkCreatorMap = new Map<string, QuizCreator>()
+  if (bookmarkedQuizzes.length > 0) {
+    const uniqueIds = [...new Set(bookmarkedQuizzes.map((q) => q.user_id))]
+    const { data: creatorsRaw } = await supabase
+      .from('profiles')
+      .select('id, full_name, avatar_url')
+      .in('id', uniqueIds)
+    if (creatorsRaw) {
+      for (const p of creatorsRaw as QuizCreator[]) {
+        bookmarkCreatorMap.set(p.id, p)
+      }
+    }
+  }
 
   const firstName = profile?.full_name?.split(' ')[0] ?? 'there'
 
@@ -104,6 +138,7 @@ export default async function DashboardPage() {
                   quiz={quiz}
                   showActions
                   userId={user.id}
+                  bookmarked={bookmarkedQuizIds.has(quiz.id)}
                   creator={profile as QuizCreator | null}
                 />
               ))}
@@ -124,6 +159,29 @@ export default async function DashboardPage() {
                 Create your first quiz
               </Button>
             </CreateQuizDialog>
+          </div>
+        )}
+
+        {/* Bookmarked quizzes */}
+        {bookmarkedQuizzes.length > 0 && (
+          <div>
+            <div className="flex items-center gap-2 mb-4">
+              <Bookmark className="h-5 w-5 text-violet-600 fill-violet-600" />
+              <h2 className="text-lg font-semibold">Sparade quiz</h2>
+              <span className="text-sm text-muted-foreground">({bookmarkedQuizzes.length})</span>
+            </div>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {bookmarkedQuizzes.map((quiz) => (
+                <QuizCard
+                  key={quiz.id}
+                  quiz={quiz}
+                  showActions={false}
+                  userId={user.id}
+                  bookmarked={true}
+                  creator={bookmarkCreatorMap.get(quiz.user_id) ?? null}
+                />
+              ))}
+            </div>
           </div>
         )}
       </main>

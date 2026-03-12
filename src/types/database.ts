@@ -90,6 +90,25 @@ export interface Database {
           user_id?: string
         }
       }
+      quiz_bookmarks: {
+        Row: {
+          id: string
+          quiz_id: string
+          user_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          quiz_id: string
+          user_id: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          quiz_id?: string
+          user_id?: string
+        }
+      }
       cards: {
         Row: {
           id: string

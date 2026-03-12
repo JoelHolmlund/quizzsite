@@ -70,17 +70,18 @@ export default async function ExplorePage({
 
   // Fetch which quizzes the current user has liked (to pre-populate heart state)
   let likedQuizIds = new Set<string>()
+  let bookmarkedQuizIds = new Set<string>()
   if (user && quizzes.length > 0) {
-    const { data: likes } = await supabase
-      .from('quiz_likes')
-      .select('quiz_id')
-      .eq('user_id', user.id)
-      .in(
-        'quiz_id',
-        quizzes.map((q) => q.id)
-      )
-    if (likes) {
-      likedQuizIds = new Set(likes.map((l: { quiz_id: string }) => l.quiz_id))
+    const quizIds = quizzes.map((q) => q.id)
+    const [likesRes, bookmarksRes] = await Promise.all([
+      supabase.from('quiz_likes').select('quiz_id').eq('user_id', user.id).in('quiz_id', quizIds),
+      supabase.from('quiz_bookmarks').select('quiz_id').eq('user_id', user.id).in('quiz_id', quizIds),
+    ])
+    if (likesRes.data) {
+      likedQuizIds = new Set(likesRes.data.map((l: { quiz_id: string }) => l.quiz_id))
+    }
+    if (bookmarksRes.data) {
+      bookmarkedQuizIds = new Set(bookmarksRes.data.map((b: { quiz_id: string }) => b.quiz_id))
     }
   }
 
@@ -195,6 +196,7 @@ export default async function ExplorePage({
                   showActions={false}
                   userId={user?.id ?? null}
                   liked={likedQuizIds.has(quiz.id)}
+                  bookmarked={bookmarkedQuizIds.has(quiz.id)}
                   creator={creatorMap.get(quiz.user_id) ?? null}
                 />
               ))}

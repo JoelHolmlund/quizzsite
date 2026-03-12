@@ -24,6 +24,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import LikeButton from '@/components/quiz/LikeButton'
+import BookmarkButton from '@/components/quiz/BookmarkButton'
 import { BookOpen, Globe, Lock, MoreVertical, Pencil, Share2, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import type { Quiz } from '@/types/database'
@@ -39,6 +40,7 @@ interface QuizCardProps {
   showActions?: boolean
   userId?: string | null
   liked?: boolean
+  bookmarked?: boolean
   creator?: QuizCreator | null
 }
 
@@ -47,6 +49,7 @@ export default function QuizCard({
   showActions = false,
   userId = null,
   liked = false,
+  bookmarked = false,
   creator = null,
 }: QuizCardProps) {
   const router = useRouter()
@@ -183,6 +186,14 @@ export default function QuizCard({
                 quizId={quiz.id}
                 initialLiked={liked}
                 initialCount={quiz.like_count ?? 0}
+                userId={userId}
+                size="sm"
+              />
+            )}
+            {userId && (
+              <BookmarkButton
+                quizId={quiz.id}
+                initialBookmarked={bookmarked}
                 userId={userId}
                 size="sm"
               />
