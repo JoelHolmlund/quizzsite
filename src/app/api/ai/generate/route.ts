@@ -4,10 +4,11 @@ import OpenAI from 'openai'
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
-const SYSTEM_PROMPT = `You are an expert educator who creates high-quality flashcards from study material.
+const SYSTEM_PROMPT = `You are a Chameleon Teacher — an expert educator who adapts flashcard creation style based on the user's intent.
 
-Given the content provided, extract key concepts and generate flashcards in the following JSON format:
+Always respond with a valid JSON object in exactly this shape — nothing else, no extra text:
 {
+  "message": "Short friendly explanation in the same language the user wrote in",
   "cards": [
     {
       "question": "Clear, concise question that tests understanding",
@@ -17,13 +18,26 @@ Given the content provided, extract key concepts and generate flashcards in the 
   ]
 }
 
-Rules:
-- Generate between 5 and 20 cards depending on content length and density
+ADAPTABILITY RULES — read the user's instruction carefully and follow the matching mode:
+
+MODE 1 — COPY (keywords: "kopiera", "exakta frågor", "använd dessa", "gör kort på detta", "copy", "exact"):
+  Extract questions and answers verbatim from the source material. Do NOT rephrase, restructure, or add complexity.
+  Preserve the original wording as closely as possible.
+
+MODE 2 — CHALLENGE (keywords: "liknande", "svårare", "utmanande", "harder", "similar", "more complex", "challenging"):
+  Use the source material only as a template/theme. Create NEW, more complex problems that build on the same concepts.
+  Add implicit differentiation, multi-step analysis, edge cases, or higher-order thinking. Do NOT copy the original questions.
+
+MODE 3 — BALANCED (no specific instruction, or keywords like "sammanfatta", "gör flashcards", "generate"):
+  Make a balanced summary of the key concepts. Mix definition questions, concept checks, and application questions.
+
+General rules:
+- Generate between 5 and 50 cards depending on content length, density, and the user's instruction
 - Questions should test key concepts, definitions, processes, or relationships
-- Answers should be factual and concise
+- Answers should be factual and concise (1-3 sentences)
 - The "options" array must always include the correct answer (matching the "answer" field exactly) plus 3 plausible distractors
 - Shuffle the options array so the correct answer is not always first
-- Return ONLY valid JSON, no markdown, no extra text
+- The "message" field should briefly explain what mode was used and how many cards were created, in the same language the user wrote in
 
 MATH FORMATTING — CRITICAL, NO EXCEPTIONS:
 Every single mathematical expression, symbol, variable, or formula MUST be wrapped in LaTeX delimiters.
@@ -81,6 +95,7 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData()
     const file = formData.get('file') as File | null
     const text = formData.get('text') as string | null
+    const instruction = (formData.get('instruction') as string | null) ?? ''
 
     if (file) {
       if (file.type === 'text/plain') {
@@ -110,14 +125,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Content is empty' }, { status: 400 })
     }
 
-    // Truncate to avoid token limits (~10,000 chars ≈ ~3,000 tokens)
-    const truncated = content.slice(0, 10000)
+    const truncated = content.slice(0, 40000)
+
+    const userMessage = instruction
+      ? `${instruction}\n\nSource material:\n${truncated}`
+      : `Generate flashcards from the following content:\n\n${truncated}`
 
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: `Generate flashcards from the following content:\n\n${truncated}` },
+        { role: 'user', content: userMessage },
       ],
       response_format: { type: 'json_object' },
       temperature: 0.7,
@@ -135,6 +153,7 @@ export async function POST(request: NextRequest) {
 
     const parsed = JSON.parse(responseText)
     const cards = parsed.cards ?? parsed
+    const aiMessage: string = parsed.message ?? 'Här är dina flashcards!'
 
     if (!Array.isArray(cards) || cards.length === 0) {
       return NextResponse.json({ error: 'AI did not return valid cards' }, { status: 500 })
@@ -149,7 +168,7 @@ export async function POST(request: NextRequest) {
         options: Array.isArray(c.options) ? c.options.map(String) : undefined,
       }))
 
-    return NextResponse.json({ cards: sanitized })
+    return NextResponse.json({ message: aiMessage, cards: sanitized })
   } catch (error) {
     console.error('AI generation error:', error)
     return NextResponse.json(
