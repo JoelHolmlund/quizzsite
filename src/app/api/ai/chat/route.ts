@@ -85,11 +85,12 @@ FEL exempel:
 
 ===== STEG 3 — LÄGG TILL SVAR =====
 Tentan har inga svar. Använd din ämneskunskap för att:
-- Fylla i "answer" med en tydlig förklaring av vad som är rätt och varför.
+- Fylla i "answer" med ett KORT svar (max 1-2 meningar). Var koncis för att spara tokens.
 - Om tentan har svarsalternativ (A/B/C/D), använd dem exakt som distraktorer.
-- Annars konstruera 3 rimliga men felaktiga distraktorer.
+- Annars konstruera 3 rimliga men felaktiga distraktorer (korta, max 10 ord vardera).
 - Sätt "correct_answers" till en array med alla korrekta alternativ.
-- Extrahera ALLA frågor, hoppa inte över några.`
+- Extrahera ALLA frågor, hoppa inte över några.
+- Om du inte hinner med alla frågor i ett svar, meddela det i "message"-fältet så användaren kan be om fler.`
 
 export type GeneratedCard = {
   question: string
@@ -198,7 +199,7 @@ export async function POST(request: NextRequest) {
       ],
       response_format: { type: 'json_object' },
       temperature: 0.8,
-      max_tokens: 30000,
+      max_tokens: 16384,
     })
 
     const rawText = completion.choices[0]?.message?.content ?? '{}'

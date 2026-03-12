@@ -67,11 +67,11 @@ const SUGGESTIONS = [
 ]
 
 const TENTA_SUGGESTIONS = [
-  'Gör tentafrågor från det här materialet',
+  'Extrahera alla frågor från tentan',
+  'Fortsätt med resten av frågorna',
   'Blanda enkla och svåra frågor',
   'Fokusera på de svåraste delarna',
   'Skapa frågor med flera rätta svar',
-  'Ge mig typiska tentauppgifter',
 ]
 
 /* ------------------------------------------------------------------ */
