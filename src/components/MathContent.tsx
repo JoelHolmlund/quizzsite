@@ -22,25 +22,24 @@ interface MathContentProps {
  *  3. bare \begin{…}…\end{…} blocks not already inside $…$ → $$…$$
  */
 function normaliseMathDelimiters(text: string): string {
-  // 1. Upgrade any $…$ that CONTAINS \begin{env}…\end{env} to $$…$$
-  //    Matches: $\begin{cases}…$ AND $f(x) = \begin{cases}…$ (content before \begin)
-  //    [^$]* allows arbitrary text before \begin, [^$]* allows text after \end.
+  // 1. \[…\] → $$…$$  (display math — no risk of double-wrapping)
+  text = text.replace(/\\\[([\s\S]*?)\\\]/g, (_m, inner: string) => `\n$$\n${inner}\n$$\n`)
+
+  // 2. \(…\) → $…$  (inline math)
+  text = text.replace(/\\\(([\s\S]*?)\\\)/g, (_m, inner: string) => `$${inner}$`)
+
+  // 3. Upgrade SINGLE $…$ (not $$…$$) that contains \begin{env} to $$…$$
+  //    (?<!\$)\$(?!\$) matches a lone $ that is NOT part of $$
+  //    This avoids mangling text that is already correctly wrapped in $$…$$
   text = text.replace(
-    /\$([^$]*\\begin\{[^}]+\}[\s\S]*?\\end\{[^}]+\}[^$]*)\$/g,
+    /(?<!\$)\$(?!\$)([^$]*\\begin\{[^}]+\}[\s\S]*?\\end\{[^}]+\}[^$]*)(?<!\$)\$(?!\$)/g,
     (_m, inner: string) => `\n$$\n${inner}\n$$\n`,
   )
 
-  // 2. \[…\] → $$…$$  (display math)
-  text = text.replace(/\\\[([\s\S]*?)\\\]/g, (_m, inner: string) => `\n$$\n${inner}\n$$\n`)
-
-  // 3. \(…\) → $…$  (inline math)
-  text = text.replace(/\\\(([\s\S]*?)\\\)/g, (_m, inner: string) => `$${inner}$`)
-
-  // 4. Bare \begin{env}…\end{env} NOT already inside $$…$$
-  //    After step 1 the remaining ones are truly unwrapped — wrap them now.
-  //    Guard: only match when NOT directly preceded by $$ (already handled).
+  // 4. Bare \begin{env}…\end{env} not inside any $ — wrap in $$…$$
+  //    Guard: skip if immediately preceded by \n$$ (already wrapped by steps above)
   text = text.replace(
-    /(?<!\$\$\n?)(\\begin\{[^}]+\}[\s\S]*?\\end\{[^}]+\})/g,
+    /(?<!\$)(\\begin\{[^}]+\}[\s\S]*?\\end\{[^}]+\})(?!\$)/g,
     (_m, inner: string) => `\n$$\n${inner}\n$$\n`,
   )
 
