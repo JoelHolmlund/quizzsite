@@ -137,27 +137,56 @@ export async function POST(request: NextRequest) {
 
     const responseText = completion.choices[0]?.message?.content ?? ''
 
-    // Parse message and cards from response
+    // ── Extract message text ────────────────────────────────────────────────
     const messageMatch = responseText.match(/<message>([\s\S]*?)<\/message>/)
-    const cardsMatch = responseText.match(/<cards>([\s\S]*?)<\/cards>/)
+    const aiMessage = messageMatch?.[1]?.trim()
+      ?? responseText.split('\n')[0]?.trim()
+      ?? 'Här är dina flashcards!'
 
-    const aiMessage = messageMatch?.[1]?.trim() ?? 'Here are your flashcards!'
+    // ── Extract cards JSON — three strategies, first one that works wins ────
+    type RawCard = { question?: unknown; answer?: unknown; options?: unknown }
+
+    function sanitizeCards(parsed: unknown): GeneratedCard[] {
+      const arr = Array.isArray(parsed) ? parsed : (parsed as { cards?: unknown })?.cards
+      if (!Array.isArray(arr)) return []
+      return arr
+        .filter((c: RawCard) => c.question && c.answer)
+        .map((c: RawCard) => ({
+          question: String(c.question).trim(),
+          answer: String(c.answer).trim(),
+          options: Array.isArray(c.options) ? (c.options as unknown[]).map(String) : undefined,
+        }))
+    }
 
     let cards: GeneratedCard[] = []
-    if (cardsMatch?.[1]) {
-      try {
-        const parsed = JSON.parse(cardsMatch[1].trim())
-        cards = Array.isArray(parsed)
-          ? parsed
-              .filter((c: { question?: unknown; answer?: unknown }) => c.question && c.answer)
-              .map((c: { question: string; answer: string; options?: string[] }) => ({
-                question: String(c.question).trim(),
-                answer: String(c.answer).trim(),
-                options: Array.isArray(c.options) ? c.options.map(String) : undefined,
-              }))
-          : []
-      } catch {
-        // Could not parse cards JSON — return empty
+
+    // Strategy 1: <cards>[...]</cards> XML tags
+    const xmlCardsMatch = responseText.match(/<cards>([\s\S]*?)<\/cards>/)
+    if (xmlCardsMatch?.[1] && cards.length === 0) {
+      try { cards = sanitizeCards(JSON.parse(xmlCardsMatch[1].trim())) } catch { /* next */ }
+    }
+
+    // Strategy 2: ```json [...] ``` or ``` [...] ``` code fences
+    if (cards.length === 0) {
+      const fenceMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)\s*```/)
+      if (fenceMatch?.[1]) {
+        try { cards = sanitizeCards(JSON.parse(fenceMatch[1].trim())) } catch { /* next */ }
+      }
+    }
+
+    // Strategy 3: first [...] JSON array anywhere in the response
+    if (cards.length === 0) {
+      const arrayMatch = responseText.match(/(\[[\s\S]*?\])/)
+      if (arrayMatch?.[1]) {
+        try { cards = sanitizeCards(JSON.parse(arrayMatch[1])) } catch { /* give up */ }
+      }
+    }
+
+    // Strategy 4: { "cards": [...] } object
+    if (cards.length === 0) {
+      const objMatch = responseText.match(/(\{[\s\S]*?\})/)
+      if (objMatch?.[1]) {
+        try { cards = sanitizeCards(JSON.parse(objMatch[1])) } catch { /* give up */ }
       }
     }
 

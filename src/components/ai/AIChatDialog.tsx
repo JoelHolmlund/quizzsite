@@ -8,6 +8,8 @@ import { Badge } from '@/components/ui/badge'
 import {
   Bot,
   CheckCircle2,
+  ChevronDown,
+  ChevronUp,
   FileText,
   Loader2,
   Paperclip,
@@ -62,41 +64,84 @@ const SUGGESTIONS = [
 ]
 
 /* ------------------------------------------------------------------ */
-/* Sub-components                                                        */
+/* CardPreview with checkbox                                             */
 /* ------------------------------------------------------------------ */
 function CardPreview({
   card,
   index,
+  selected,
+  onToggle,
 }: {
   card: GeneratedCard
   index: number
+  selected: boolean
+  onToggle: () => void
 }) {
   const [expanded, setExpanded] = useState(false)
+
   return (
-    <button
-      onClick={() => setExpanded((v) => !v)}
-      className="w-full text-left rounded-lg border bg-white dark:bg-gray-900 p-3 hover:border-violet-300 transition-colors"
+    <div
+      className={cn(
+        'rounded-lg border bg-white dark:bg-gray-900 p-3 transition-colors',
+        selected
+          ? 'border-violet-400 dark:border-violet-600 bg-violet-50/50 dark:bg-violet-950/20'
+          : 'border-border hover:border-violet-200'
+      )}
     >
-      <div className="flex items-start gap-2">
-        <span className="flex-shrink-0 mt-0.5 w-5 h-5 rounded-full bg-violet-100 dark:bg-violet-950/60 text-violet-700 dark:text-violet-300 text-[10px] font-bold flex items-center justify-center">
+      <div className="flex items-start gap-2.5">
+        {/* Checkbox */}
+        <button
+          onClick={onToggle}
+          className={cn(
+            'flex-shrink-0 mt-0.5 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors',
+            selected
+              ? 'border-violet-500 bg-violet-500 text-white'
+              : 'border-muted-foreground/40 hover:border-violet-400'
+          )}
+          aria-label={selected ? 'Avmarkera kort' : 'Markera kort'}
+        >
+          {selected && (
+            <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none">
+              <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          )}
+        </button>
+
+        {/* Number */}
+        <span className="flex-shrink-0 mt-0.5 w-5 h-5 rounded-full bg-muted text-muted-foreground text-[10px] font-bold flex items-center justify-center">
           {index + 1}
         </span>
+
+        {/* Content */}
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium leading-snug">{card.question}</p>
           {expanded && (
-            <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed border-t pt-1.5">
+            <p className="text-xs text-muted-foreground mt-2 leading-relaxed border-t pt-2">
               {card.answer}
             </p>
           )}
         </div>
-        <span className="text-[10px] text-muted-foreground flex-shrink-0 mt-0.5">
-          {expanded ? 'Dölj' : 'Svar'}
-        </span>
+
+        {/* Expand toggle */}
+        <button
+          onClick={() => setExpanded((v) => !v)}
+          className="flex-shrink-0 mt-0.5 text-muted-foreground hover:text-foreground transition-colors"
+          aria-label={expanded ? 'Dölj svar' : 'Visa svar'}
+        >
+          {expanded ? (
+            <ChevronUp className="h-4 w-4" />
+          ) : (
+            <ChevronDown className="h-4 w-4" />
+          )}
+        </button>
       </div>
-    </button>
+    </div>
   )
 }
 
+/* ------------------------------------------------------------------ */
+/* AssistantMessage                                                      */
+/* ------------------------------------------------------------------ */
 function AssistantMessage({
   message,
   onAddCards,
@@ -104,46 +149,102 @@ function AssistantMessage({
   message: ChatMessage
   onAddCards: (msgId: string, cards: GeneratedCard[]) => void
 }) {
+  const [selected, setSelected] = useState<Set<number>>(
+    () => new Set(message.cards?.map((_, i) => i) ?? [])
+  )
+
+  const cards = message.cards ?? []
+  const allSelected = selected.size === cards.length
+  const noneSelected = selected.size === 0
+
+  function toggleCard(i: number) {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(i)) next.delete(i)
+      else next.add(i)
+      return next
+    })
+  }
+
+  function toggleAll() {
+    if (allSelected) {
+      setSelected(new Set())
+    } else {
+      setSelected(new Set(cards.map((_, i) => i)))
+    }
+  }
+
   return (
     <div className="flex gap-3 items-start">
       <div className="flex-shrink-0 w-7 h-7 rounded-full bg-violet-100 dark:bg-violet-950/60 flex items-center justify-center">
         <Bot className="h-4 w-4 text-violet-600" />
       </div>
       <div className="flex-1 min-w-0 space-y-3">
+        {/* Message bubble */}
         <div className="rounded-2xl rounded-tl-sm bg-muted/60 dark:bg-gray-800/80 px-4 py-3 text-sm leading-relaxed">
           {message.content}
         </div>
 
-        {message.cards && message.cards.length > 0 && (
+        {/* Cards */}
+        {cards.length > 0 && (
           <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <Badge variant="secondary" className="text-xs gap-1">
-                <Sparkles className="h-3 w-3 text-violet-500" />
-                {message.cards.length} kort genererade
-              </Badge>
-              <span className="text-xs text-muted-foreground">Klicka för att se svar</span>
+            {/* Header row */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary" className="text-xs gap-1">
+                  <Sparkles className="h-3 w-3 text-violet-500" />
+                  {cards.length} kort genererade
+                </Badge>
+              </div>
+              {!message.addedToQuiz && (
+                <button
+                  onClick={toggleAll}
+                  className="text-xs text-violet-600 hover:underline font-medium"
+                >
+                  {allSelected ? 'Avmarkera alla' : 'Markera alla'}
+                </button>
+              )}
             </div>
 
-            <div className="space-y-1.5 max-h-64 overflow-y-auto pr-0.5">
-              {message.cards.map((card, i) => (
-                <CardPreview key={i} card={card} index={i} />
+            {/* Card list */}
+            <div className="space-y-1.5 max-h-72 overflow-y-auto pr-0.5">
+              {cards.map((card, i) => (
+                <CardPreview
+                  key={i}
+                  card={card}
+                  index={i}
+                  selected={selected.has(i)}
+                  onToggle={() => toggleCard(i)}
+                />
               ))}
             </div>
 
+            {/* Action row */}
             {message.addedToQuiz ? (
               <div className="flex items-center gap-2 text-sm text-emerald-600 dark:text-emerald-400 font-medium">
                 <CheckCircle2 className="h-4 w-4" />
                 Korten har lagts till i quizet!
               </div>
             ) : (
-              <Button
-                size="sm"
-                className="bg-violet-600 hover:bg-violet-700 gap-2"
-                onClick={() => onAddCards(message.id, message.cards!)}
-              >
-                <Plus className="h-3.5 w-3.5" />
-                Lägg till {message.cards.length} kort i quizet
-              </Button>
+              <div className="flex items-center gap-3">
+                <Button
+                  size="sm"
+                  className="bg-violet-600 hover:bg-violet-700 gap-2"
+                  disabled={noneSelected}
+                  onClick={() => {
+                    const chosenCards = cards.filter((_, i) => selected.has(i))
+                    onAddCards(message.id, chosenCards)
+                  }}
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Lägg till {selected.size > 0 ? `${selected.size} valda` : ''} kort
+                </Button>
+                {!allSelected && selected.size > 0 && (
+                  <span className="text-xs text-muted-foreground">
+                    {cards.length - selected.size} borttagna
+                  </span>
+                )}
+              </div>
             )}
           </div>
         )}
@@ -152,6 +253,9 @@ function AssistantMessage({
   )
 }
 
+/* ------------------------------------------------------------------ */
+/* UserMessage                                                           */
+/* ------------------------------------------------------------------ */
 function UserMessage({ message }: { message: ChatMessage }) {
   return (
     <div className="flex gap-3 items-start justify-end">
@@ -182,7 +286,6 @@ export default function AIChatDialog({
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
-  // Scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, loading])
@@ -216,10 +319,9 @@ export default function AIChatDialog({
       const userMsg: ChatMessage = {
         id: uid(),
         role: 'user',
-        content: trimmed || (file ? `Jag har laddat upp filen: ${file.name}` : ''),
+        content: trimmed || `Jag har laddat upp filen: ${file?.name}`,
       }
 
-      // Build history for API — only include role + content (no card data)
       const newHistory = [...messages, userMsg].map((m) => ({
         role: m.role,
         content: m.content,
@@ -232,7 +334,6 @@ export default function AIChatDialog({
       try {
         const formData = new FormData()
         formData.append('messages', JSON.stringify(newHistory))
-        // Only attach file on the very first send
         if (file && messages.length === 0) {
           formData.append('file', file)
         }
@@ -258,14 +359,12 @@ export default function AIChatDialog({
         }
         setMessages((prev) => [...prev, assistantMsg])
 
-        // Clear file after first successful send
         if (file && messages.length === 0) {
           setFile(null)
           if (fileInputRef.current) fileInputRef.current.value = ''
         }
       } catch (err) {
         toast.error(err instanceof Error ? err.message : 'Kunde inte kontakta AI')
-        // Remove the user message on error
         setMessages((prev) => prev.filter((m) => m.id !== userMsg.id))
       } finally {
         setLoading(false)
@@ -283,7 +382,6 @@ export default function AIChatDialog({
   }
 
   const handleAddCards = (msgId: string, cards: GeneratedCard[]) => {
-    const startPosition = 0 // will be offset by existing cards in parent
     const mapped = cards.map((c, i) => ({
       quiz_id: quizId,
       question: c.question,
@@ -292,18 +390,13 @@ export default function AIChatDialog({
       position: i,
     }))
     onCardsGenerated(mapped)
-    // Mark this message's cards as added
     setMessages((prev) =>
       prev.map((m) => (m.id === msgId ? { ...m, addedToQuiz: true } : m))
     )
     toast.success(`${cards.length} kort tillagda i quizet!`)
-    void startPosition
   }
 
-  const handleClose = () => {
-    setOpen(false)
-    // Keep messages open for context — user can reopen and continue
-  }
+  const handleClose = () => setOpen(false)
 
   const handleClearChat = () => {
     setMessages([])
@@ -348,11 +441,11 @@ export default function AIChatDialog({
               )}
             </div>
             <p className="text-xs text-muted-foreground">
-              Ladda upp en fil eller skriv ett meddelande. Du kan ge egna instruktioner till AI:n.
+              Ladda upp en fil eller skriv ett meddelande. Välj vilka kort du vill lägga till.
             </p>
           </DialogHeader>
 
-          {/* Messages area */}
+          {/* Messages */}
           <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4 min-h-0">
             {isEmpty ? (
               <div className="h-full flex flex-col items-center justify-center gap-5 text-center">
@@ -411,7 +504,6 @@ export default function AIChatDialog({
 
           {/* Input area */}
           <div className="shrink-0 border-t bg-white dark:bg-gray-950 px-4 pb-4 pt-3 space-y-2">
-            {/* File badge */}
             {file && (
               <div className="flex items-center gap-2 text-xs">
                 <div className="flex items-center gap-1.5 border rounded-full px-2.5 py-1 bg-violet-50 dark:bg-violet-950/30 text-violet-700 dark:text-violet-300">
@@ -422,15 +514,12 @@ export default function AIChatDialog({
                   </button>
                 </div>
                 <span className="text-muted-foreground">
-                  {messages.length === 0
-                    ? 'Bifogad – skickas med nästa meddelande'
-                    : 'Filen är redan skickad'}
+                  {messages.length === 0 ? 'Bifogad – skickas med nästa meddelande' : 'Redan skickad'}
                 </span>
               </div>
             )}
 
             <div className="flex gap-2 items-end">
-              {/* File upload */}
               <input
                 ref={fileInputRef}
                 type="file"
@@ -448,7 +537,6 @@ export default function AIChatDialog({
                 <Paperclip className={cn('h-4 w-4', file ? 'text-violet-600' : 'text-muted-foreground')} />
               </Button>
 
-              {/* Text input */}
               <div className="flex-1 relative">
                 <Textarea
                   ref={textareaRef}
@@ -466,7 +554,6 @@ export default function AIChatDialog({
                 />
               </div>
 
-              {/* Send button */}
               <Button
                 size="icon"
                 className="h-10 w-10 shrink-0 bg-violet-600 hover:bg-violet-700"
@@ -482,7 +569,7 @@ export default function AIChatDialog({
               </Button>
             </div>
             <p className="text-[10px] text-muted-foreground text-center">
-              Enter = skicka &nbsp;·&nbsp; Shift+Enter = ny rad &nbsp;·&nbsp; Klicka ett kort för att se svaret
+              Enter = skicka &nbsp;·&nbsp; Shift+Enter = ny rad &nbsp;·&nbsp; Klicka pil för att se svar
             </p>
           </div>
         </DialogContent>
