@@ -77,11 +77,9 @@ export async function POST(request: NextRequest) {
       } else if (file.type === 'application/pdf') {
         try {
           const arrayBuffer = await file.arrayBuffer()
-          const buffer = Buffer.from(arrayBuffer)
-          // eslint-disable-next-line @typescript-eslint/no-require-imports
-          const pdfParse = require('pdf-parse') as (buf: Buffer) => Promise<{ text: string }>
-          const parsed = await pdfParse(buffer)
-          fileContent = parsed.text
+          const { extractText } = await import('unpdf')
+          const { text } = await extractText(new Uint8Array(arrayBuffer), { mergePages: true })
+          fileContent = text
         } catch (pdfErr) {
           console.error('PDF parse error:', pdfErr)
           return NextResponse.json(

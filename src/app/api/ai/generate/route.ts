@@ -51,15 +51,11 @@ export async function POST(request: NextRequest) {
       if (file.type === 'text/plain') {
         content = await file.text()
       } else if (file.type === 'application/pdf') {
-        // For PDFs we pass a simplified extraction note
-        // In production, use pdf-parse or a dedicated PDF extraction service
-        const arrayBuffer = await file.arrayBuffer()
-        const buffer = Buffer.from(arrayBuffer)
         try {
-          // eslint-disable-next-line @typescript-eslint/no-require-imports
-          const pdfParse = require('pdf-parse') as (buf: Buffer) => Promise<{ text: string }>
-          const parsed = await pdfParse(buffer)
-          content = parsed.text
+          const arrayBuffer = await file.arrayBuffer()
+          const { extractText } = await import('unpdf')
+          const { text } = await extractText(new Uint8Array(arrayBuffer), { mergePages: true })
+          content = text
         } catch {
           return NextResponse.json(
             { error: 'Failed to parse PDF. Please paste the text content instead.' },
