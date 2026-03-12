@@ -97,6 +97,8 @@ export async function POST(request: NextRequest) {
     const messages: ChatMessage[] = JSON.parse(messagesRaw || '[]')
 
     let fileContent = ''
+    let pdfBase64: string | null = null
+
     if (file) {
       if (file.type === 'text/plain') {
         fileContent = await file.text()
@@ -106,6 +108,14 @@ export async function POST(request: NextRequest) {
           const { extractText } = await import('unpdf')
           const { text } = await extractText(new Uint8Array(arrayBuffer), { mergePages: true })
           fileContent = text
+
+          // If extracted text is too short the PDF is image-based (scanned).
+          // Fall back to sending it as base64 so GPT-4o can read it visually.
+          if (fileContent.trim().length < 100) {
+            const buffer = Buffer.from(arrayBuffer)
+            pdfBase64 = `data:application/pdf;base64,${buffer.toString('base64')}`
+            fileContent = ''
+          }
         } catch (pdfErr) {
           console.error('PDF parse error:', pdfErr)
           return NextResponse.json(
@@ -114,14 +124,34 @@ export async function POST(request: NextRequest) {
           )
         }
       }
-      fileContent = fileContent.slice(0, 30000)
+      if (fileContent) {
+        fileContent = fileContent.slice(0, 40000)
+      }
     }
 
     const openaiMessages: OpenAI.Chat.ChatCompletionMessageParam[] = messages.map((msg, i) => {
-      if (i === 0 && fileContent && msg.role === 'user') {
-        return {
-          role: 'user',
-          content: `Source material:\n${fileContent}\n\nUser instruction: ${msg.content}`,
+      if (i === 0 && msg.role === 'user') {
+        if (pdfBase64) {
+          // Image-based PDF: send as base64 file so GPT-4o reads it visually
+          return {
+            role: 'user' as const,
+            content: [
+              {
+                type: 'file' as const,
+                file: {
+                  filename: file?.name ?? 'document.pdf',
+                  file_data: pdfBase64,
+                },
+              },
+              { type: 'text' as const, text: msg.content },
+            ],
+          }
+        }
+        if (fileContent) {
+          return {
+            role: 'user',
+            content: `Source material:\n${fileContent}\n\nUser instruction: ${msg.content}`,
+          }
         }
       }
       return { role: msg.role, content: msg.content }
@@ -131,8 +161,11 @@ export async function POST(request: NextRequest) {
       ? SYSTEM_PROMPT + TENTA_MODE_PROMPT
       : SYSTEM_PROMPT
 
+    // Image-based PDFs require gpt-4o (vision capable); text PDFs use gpt-4o-mini
+    const model = pdfBase64 ? 'gpt-4o' : 'gpt-4o-mini'
+
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
+      model,
       messages: [
         { role: 'system', content: systemContent },
         ...openaiMessages,
