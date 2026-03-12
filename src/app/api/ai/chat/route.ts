@@ -31,6 +31,8 @@ Rules:
 - "correct_answers" must be an array of the correct option string(s) — the text must match exactly what appears in "options"
 - For single-correct questions: "correct_answers" has one item (same text as the correct option)
 - Keep answers concise
+- STRICTLY FORBIDDEN — NEVER generate meta-questions about the document itself. Questions like "Vad erbjuder X enligt dokumentet?", "What does the material say about Y?", "According to the text, what is Z?" are useless for studying and are BANNED. Every question must test knowledge of the actual subject matter, not what text happens to appear in an uploaded file.
+- If a document contains a cover page (course code, date, institution, teacher name, instructions): IGNORE IT COMPLETELY. Never generate questions about cover page content.
 
 MATH FORMATTING — CRITICAL, NO EXCEPTIONS:
 Every mathematical symbol, variable, expression, or formula MUST be wrapped in $ or $$.
@@ -85,12 +87,13 @@ FEL exempel:
 
 ===== STEG 3 — LÄGG TILL SVAR =====
 Tentan har inga svar. Använd din ämneskunskap för att:
-- Fylla i "answer" med ett KORT svar (max 1-2 meningar). Var koncis för att spara tokens.
+- Fylla i "answer" med ett fullständigt svar som verkligen förklarar konceptet.
 - Om tentan har svarsalternativ (A/B/C/D), använd dem exakt som distraktorer.
-- Annars konstruera 3 rimliga men felaktiga distraktorer (korta, max 10 ord vardera).
+- Annars konstruera 3 rimliga men felaktiga distraktorer.
 - Sätt "correct_answers" till en array med alla korrekta alternativ.
-- Extrahera ALLA frågor, hoppa inte över några.
-- Om du inte hinner med alla frågor i ett svar, meddela det i "message"-fältet så användaren kan be om fler.`
+- Generera så många frågor du hinner med i detta svar.
+- Om det finns fler frågor kvar som du INTE hann med, skriv i "message"-fältet exakt vilken fråga/vilket nummer du stannade vid (t.ex. "Genererade fråga 1–8. Fråga 9 och framåt återstår — skriv 'fortsätt' för nästa batch.").
+- Om du hann med ALLA frågor, skriv i "message" hur många du genererade totalt.`
 
 export type GeneratedCard = {
   question: string
@@ -156,6 +159,11 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Extra reminder injected into the user message when tenta mode is active
+    const tentaReminder = tentaMode
+      ? '\n\n[SYSTEM REMINDER: This is an exam (tenta). Page 1 is a cover page — SKIP IT. Find the pages with actual numbered questions (Fråga/Uppgift/Question 1, 2, 3…) and extract EVERY question verbatim. Do NOT generate meta-questions about the document. Do NOT ask about dates, course codes, or instructor names.]'
+      : ''
+
     const openaiMessages: OpenAI.Chat.ChatCompletionMessageParam[] = messages.map((msg, i) => {
       if (i === 0 && msg.role === 'user') {
         if (pdfBase64) {
@@ -170,22 +178,23 @@ export async function POST(request: NextRequest) {
                   file_data: pdfBase64,
                 },
               },
-              { type: 'text' as const, text: msg.content },
+              { type: 'text' as const, text: msg.content + tentaReminder },
             ],
           }
         }
         if (fileContent) {
           return {
             role: 'user',
-            content: `Source material:\n${fileContent}\n\nUser instruction: ${msg.content}`,
+            content: `Source material:\n${fileContent}\n\nUser instruction: ${msg.content}${tentaReminder}`,
           }
         }
       }
       return { role: msg.role, content: msg.content }
     })
 
+    // In tenta mode, prepend the tenta instructions so they take highest priority
     const systemContent = tentaMode
-      ? SYSTEM_PROMPT + TENTA_MODE_PROMPT
+      ? TENTA_MODE_PROMPT + '\n\n' + SYSTEM_PROMPT
       : SYSTEM_PROMPT
 
     // Image-based PDFs require gpt-4o (vision capable); text PDFs use gpt-4o-mini

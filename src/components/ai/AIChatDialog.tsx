@@ -156,9 +156,11 @@ function CardPreview({
 function AssistantMessage({
   message,
   onAddCards,
+  onNextBatch,
 }: {
   message: ChatMessage
   onAddCards: (msgId: string, cards: GeneratedCard[]) => void
+  onNextBatch?: () => void
 }) {
   const [selected, setSelected] = useState<Set<number>>(
     () => new Set(message.cards?.map((_, i) => i) ?? [])
@@ -232,12 +234,25 @@ function AssistantMessage({
 
             {/* Action row */}
             {message.addedToQuiz ? (
-              <div className="flex items-center gap-2 text-sm text-emerald-600 dark:text-emerald-400 font-medium">
-                <CheckCircle2 className="h-4 w-4" />
-                Korten har lagts till i quizet!
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-2 text-sm text-emerald-600 dark:text-emerald-400 font-medium">
+                  <CheckCircle2 className="h-4 w-4" />
+                  Korten har lagts till i quizet!
+                </div>
+                {onNextBatch && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-1.5 border-violet-300 text-violet-700 hover:bg-violet-50 dark:hover:bg-violet-950/30 dark:text-violet-300 dark:border-violet-700"
+                    onClick={onNextBatch}
+                  >
+                    Processsa nästa batch
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  </Button>
+                )}
               </div>
             ) : (
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <Button
                   size="sm"
                   className="bg-violet-600 hover:bg-violet-700 gap-2"
@@ -254,6 +269,17 @@ function AssistantMessage({
                   <span className="text-xs text-muted-foreground">
                     {cards.length - selected.size} borttagna
                   </span>
+                )}
+                {onNextBatch && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-1.5 border-violet-300 text-violet-700 hover:bg-violet-50 dark:hover:bg-violet-950/30 dark:text-violet-300 dark:border-violet-700"
+                    onClick={onNextBatch}
+                  >
+                    Processsa nästa batch
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  </Button>
                 )}
               </div>
             )}
@@ -517,17 +543,32 @@ export default function AIChatDialog({
               </div>
             ) : (
               <>
-                {messages.map((msg) =>
-                  msg.role === 'user' ? (
-                    <UserMessage key={msg.id} message={msg} />
-                  ) : (
-                    <AssistantMessage
-                      key={msg.id}
-                      message={msg}
-                      onAddCards={handleAddCards}
-                    />
+                {(() => {
+                  // Find the last assistant message index that has cards (for "next batch" button)
+                  let lastCardMsgIdx = -1
+                  for (let i = messages.length - 1; i >= 0; i--) {
+                    if (messages[i].role === 'assistant' && (messages[i].cards?.length ?? 0) > 0) {
+                      lastCardMsgIdx = i
+                      break
+                    }
+                  }
+                  return messages.map((msg, idx) =>
+                    msg.role === 'user' ? (
+                      <UserMessage key={msg.id} message={msg} />
+                    ) : (
+                      <AssistantMessage
+                        key={msg.id}
+                        message={msg}
+                        onAddCards={handleAddCards}
+                        onNextBatch={
+                          tentaMode && idx === lastCardMsgIdx && !loading
+                            ? () => sendMessage('Fortsätt med nästa batch av frågor')
+                            : undefined
+                        }
+                      />
+                    )
                   )
-                )}
+                })()}
                 {loading && (
                   <div className="flex gap-3 items-start">
                     <div className="flex-shrink-0 w-7 h-7 rounded-full bg-violet-100 dark:bg-violet-950/60 flex items-center justify-center">
