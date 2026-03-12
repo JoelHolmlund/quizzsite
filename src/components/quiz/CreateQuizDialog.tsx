@@ -56,7 +56,14 @@ export default function CreateQuizDialog({ userId, children }: CreateQuizDialogP
       return
     }
 
-    toast.success('Quiz created!')
+    // Store the full shareable URL so it's visible in Supabase dashboard
+    const shareUrl = `${window.location.origin}/quiz/${data.id}`
+    await supabase
+      .from('quizzes')
+      .update({ share_url: shareUrl })
+      .eq('id', data.id)
+
+    toast.success('Quiz skapad!')
     setOpen(false)
     setTitle('')
     setDescription('')

@@ -42,6 +42,10 @@ Delimiters:
     $$y = x^3 \\ln(x)$$
     $$f(x) = \\begin{cases} x^2, & x < 0 \\\\ 2x, & x \\geq 0 \\end{cases}$$
 
+CASES/PIECEWISE RULE: Lines inside \\begin{cases} MUST be separated by \\\\ (double backslash).
+  WRONG: \\begin{cases} x^2 & x<0 \\ 0 & x=0 \\end{cases}   ← single \\ breaks rendering
+  CORRECT: \\begin{cases} x^2, & x < 0 \\\\ 0, & x = 0 \\end{cases}   ← double \\\\ required
+
 NEVER do this:
   BAD:  f(x) \neq 0          → GOOD: $f(x) \\neq 0$
   BAD:  \text{cos}(x)        → GOOD: $\\cos(x)$

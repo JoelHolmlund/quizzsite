@@ -13,6 +13,8 @@ Rules:
 - Wrap inline math in single dollar signs: $x^2$, $\\frac{a}{b}$
 - Wrap display/block math (equations on their own) in double dollar signs: $$y = mx + b$$
 - Environments like \\begin{cases}, \\begin{align}, \\begin{matrix} MUST be inside $$...$$
+- Lines inside \\begin{cases} MUST be separated by \\\\ (double backslash): \\begin{cases} a \\\\ b \\end{cases}
+  WRONG: \\begin{cases} a \\ b \\end{cases}   CORRECT: \\begin{cases} a \\\\ b \\end{cases}
 - NEVER change the meaning of the question or answer
 - If the text already has correct LaTeX (with $ delimiters), keep it as-is
 - If there is no math at all, return the text unchanged

@@ -39,6 +39,10 @@ Delimiters:
 Piecewise functions MUST use display math ($$...$$):
   $$f(x) = \\\\begin{cases} x^2, & x < 0 \\\\\\\\ 2x, & x \\\\geq 0 \\\\end{cases}$$
 
+CASES/PIECEWISE RULE: Lines inside \\\\begin{cases} MUST be separated by \\\\\\\\ (four backslashes in JSON = \\\\ in LaTeX).
+  WRONG (single \\\\): \\\\begin{cases} x^2 & x<0 \\\\ 0 & x=0 \\\\end{cases}
+  CORRECT (double \\\\\\\\): \\\\begin{cases} x^2, & x < 0 \\\\\\\\ 0, & x = 0 \\\\end{cases}
+
 NEVER do this (raw LaTeX without delimiters):
   BAD:  f(x) \\neq 0
   BAD:  \\text{cos}(x)
