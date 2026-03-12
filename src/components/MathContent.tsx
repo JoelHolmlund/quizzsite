@@ -22,14 +22,20 @@ interface MathContentProps {
  *  3. bare \begin{…}…\end{…} blocks not already inside $…$ → $$…$$
  */
 function normaliseMathDelimiters(text: string): string {
-  // 1. \[…\] → $$…$$
+  // 1. Upgrade $\begin{env}…\end{env}$ (inline) → $$…$$ (display)
+  //    Environments like cases/align/pmatrix MUST be in display mode or KaTeX errors.
+  text = text.replace(
+    /\$(\\begin\{[^}]+\}[\s\S]*?\\end\{[^}]+\})\$/g,
+    (_m, inner: string) => `\n$$\n${inner}\n$$\n`,
+  )
+
+  // 2. \[…\] → $$…$$  (display math)
   text = text.replace(/\\\[([\s\S]*?)\\\]/g, (_m, inner: string) => `\n$$\n${inner}\n$$\n`)
 
-  // 2. \(…\) → $…$
+  // 3. \(…\) → $…$  (inline math)
   text = text.replace(/\\\(([\s\S]*?)\\\)/g, (_m, inner: string) => `$${inner}$`)
 
-  // 3. bare \begin{env}…\end{env} not already inside $…$
-  //    A simple look-around for a preceding $ is imperfect but catches the common case
+  // 4. Bare \begin{env}…\end{env} not already inside any $ → $$…$$
   text = text.replace(
     /(?<!\$)(\\begin\{[^}]+\}[\s\S]*?\\end\{[^}]+\})(?!\$)/g,
     (_m, inner: string) => `\n$$\n${inner}\n$$\n`,
