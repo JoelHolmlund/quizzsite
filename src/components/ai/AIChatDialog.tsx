@@ -11,6 +11,7 @@ import {
   ChevronDown,
   ChevronUp,
   FileText,
+  GraduationCap,
   Loader2,
   Paperclip,
   Plus,
@@ -19,6 +20,7 @@ import {
   User,
   X,
 } from 'lucide-react'
+import { Switch } from '@/components/ui/switch'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import type { Card } from '@/types/database'
@@ -30,6 +32,7 @@ type GeneratedCard = {
   question: string
   answer: string
   options?: string[]
+  correct_answers?: string[]
 }
 
 type ChatRole = 'user' | 'assistant'
@@ -59,8 +62,16 @@ const SUGGESTIONS = [
   'Gör flashcards från det här materialet',
   'Gör liknande frågor fast svårare',
   'Fokusera bara på [ämne]',
-  'Ge mig 5 flervalssfrågor',
+  'Ge mig 10 flervalssfrågor med flera rätta svar',
   'Förenkla frågorna för nybörjare',
+]
+
+const TENTA_SUGGESTIONS = [
+  'Gör tentafrågor från det här materialet',
+  'Blanda enkla och svåra frågor',
+  'Fokusera på de svåraste delarna',
+  'Skapa frågor med flera rätta svar',
+  'Ge mig typiska tentauppgifter',
 ]
 
 /* ------------------------------------------------------------------ */
@@ -282,6 +293,7 @@ export default function AIChatDialog({
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [file, setFile] = useState<File | null>(null)
+  const [tentaMode, setTentaMode] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -334,6 +346,7 @@ export default function AIChatDialog({
       try {
         const formData = new FormData()
         formData.append('messages', JSON.stringify(newHistory))
+        formData.append('tentaMode', tentaMode ? '1' : '0')
         if (file && messages.length === 0) {
           formData.append('file', file)
         }
@@ -387,7 +400,9 @@ export default function AIChatDialog({
       question: c.question,
       answer: c.answer,
       options: c.options ?? null,
-      correct_answers: null,
+      correct_answers: c.correct_answers && c.correct_answers.length > 0
+        ? c.correct_answers
+        : null,
       position: i,
     }))
     onCardsGenerated(mapped)
@@ -403,6 +418,7 @@ export default function AIChatDialog({
     setMessages([])
     setFile(null)
     setInput('')
+    setTentaMode(false)
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
@@ -442,8 +458,32 @@ export default function AIChatDialog({
               )}
             </div>
             <p className="text-xs text-muted-foreground">
-              Ladda upp en fil eller skriv ett meddelande. Välj vilka kort du vill lägga till.
+              Ladda upp en tenta eller föreläsning (PDF/TXT) så genererar AI:n flashcards och flervalssfrågor åt dig.
             </p>
+            {/* Tenta-läge toggle */}
+            <div className={cn(
+              'flex items-center gap-2.5 mt-1 rounded-lg px-3 py-2 border transition-colors',
+              tentaMode
+                ? 'border-violet-300 bg-violet-50 dark:bg-violet-950/30 dark:border-violet-700'
+                : 'border-border bg-muted/30'
+            )}>
+              <Switch
+                id="tenta-mode"
+                checked={tentaMode}
+                onCheckedChange={setTentaMode}
+              />
+              <label htmlFor="tenta-mode" className="flex items-center gap-1.5 cursor-pointer select-none">
+                <GraduationCap className={cn('h-3.5 w-3.5', tentaMode ? 'text-violet-600' : 'text-muted-foreground')} />
+                <span className={cn('text-xs font-medium', tentaMode ? 'text-violet-700 dark:text-violet-300' : 'text-muted-foreground')}>
+                  Tenta-läge
+                </span>
+              </label>
+              <span className="text-xs text-muted-foreground leading-tight">
+                {tentaMode
+                  ? '— extraherar frågorna exakt från tentan och lägger till rätt svar'
+                  : '— aktivera för att kopiera frågor direkt från en tenta'}
+              </span>
+            </div>
           </DialogHeader>
 
           {/* Messages */}
@@ -454,13 +494,17 @@ export default function AIChatDialog({
                   <Bot className="h-7 w-7 text-violet-600" />
                 </div>
                 <div className="space-y-1">
-                  <p className="font-semibold text-base">Hej! Hur kan jag hjälpa dig?</p>
+                  <p className="font-semibold text-base">
+                    {tentaMode ? 'Tenta-läge aktiverat 🎓' : 'Hej! Hur kan jag hjälpa dig?'}
+                  </p>
                   <p className="text-sm text-muted-foreground max-w-xs">
-                    Ladda upp din tentafil eller klistra in text och berätta vad du vill ha hjälp med.
+                    {tentaMode
+                      ? 'Ladda upp tentan (PDF/TXT) så kopierar jag frågorna exakt och lägger till rätt svar.'
+                      : 'Ladda upp en tenta eller föreläsning (PDF/TXT) och berätta vad du vill ha hjälp med.'}
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2 justify-center max-w-sm">
-                  {SUGGESTIONS.map((s) => (
+                  {(tentaMode ? TENTA_SUGGESTIONS : SUGGESTIONS).map((s) => (
                     <button
                       key={s}
                       onClick={() => setInput(s)}

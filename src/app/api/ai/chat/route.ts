@@ -4,7 +4,11 @@ import OpenAI from 'openai'
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
-const SYSTEM_PROMPT = `You are an expert educator and flashcard creator. You help students study by creating high-quality flashcards from their study materials.
+const SYSTEM_PROMPT = `You are an adaptive expert educator.
+
+Your goal is to follow the user's instructions regarding the source material:
+1. If the user wants to study the material as-is, create accurate flashcards from it.
+2. If the user asks for HARDER or SIMILAR questions, use the source material as a foundation to create NEW, more challenging problems that test deeper conceptual understanding (e.g., multi-step problems or advanced applications of the same topics).
 
 The user may upload a file (PDF, text) as their source material. They will then give you instructions in natural language.
 
@@ -14,15 +18,18 @@ You MUST respond with a valid JSON object in exactly this shape — nothing else
   "cards": [
     {
       "question": "Clear question that tests understanding",
-      "answer": "Concise answer (1-3 sentences)",
-      "options": ["Correct answer", "Plausible distractor 1", "Plausible distractor 2", "Plausible distractor 3"]
+      "answer": "Full explanation of the correct answer(s)",
+      "options": ["Option A", "Option B", "Option C", "Option D"],
+      "correct_answers": ["Option A"]
     }
   ]
 }
 
 Rules:
-- Generate between 3 and 20 cards depending on the instruction
-- "options" is for MCQ: always include the correct answer (same text as "answer") + 3 plausible distractors, shuffled randomly
+- Generate between 3 and 50 cards depending on the instruction
+- Always populate "options" with 4 alternatives including all correct answers + plausible distractors, shuffled randomly
+- "correct_answers" must be an array of the correct option string(s) — the text must match exactly what appears in "options"
+- For single-correct questions: "correct_answers" has one item (same text as the correct option)
 - Keep answers concise
 
 MATH FORMATTING — CRITICAL, NO EXCEPTIONS:
@@ -50,10 +57,21 @@ export type ChatMessage = {
   content: string
 }
 
+const TENTA_MODE_PROMPT = `
+TENTA-LÄGE AKTIVERAT — Extrahera frågorna exakt som de står i tentan:
+- Kopiera varje fråga ORDAGRANT från källmaterialet. Ändra INTE formuleringen, lägg INTE till egna frågor.
+- Om tentan har svarsalternativ (A/B/C/D), använd dem exakt. Annars hittar du på 3 rimliga distraktorer.
+- Tentan innehåller INGA svar — det är ditt jobb att ta fram korrekta svar med din ämneskunskap.
+- Fyll i "answer" med en tydlig förklaring av vad som är rätt och varför.
+- Om flera alternativ är korrekta enligt din kunskap, lista dem i "correct_answers".
+- Om bara ett alternativ är korrekt, sätt "correct_answers" till en array med enbart det alternativet.
+- Extrahera ALLA frågor från tentan, hoppa inte över några.`
+
 export type GeneratedCard = {
   question: string
   answer: string
   options?: string[]
+  correct_answers?: string[]
 }
 
 export async function POST(request: NextRequest) {
@@ -74,6 +92,7 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData()
     const messagesRaw = formData.get('messages') as string
     const file = formData.get('file') as File | null
+    const tentaMode = formData.get('tentaMode') === '1'
 
     const messages: ChatMessage[] = JSON.parse(messagesRaw || '[]')
 
@@ -95,7 +114,7 @@ export async function POST(request: NextRequest) {
           )
         }
       }
-      fileContent = fileContent.slice(0, 12000)
+      fileContent = fileContent.slice(0, 30000)
     }
 
     const openaiMessages: OpenAI.Chat.ChatCompletionMessageParam[] = messages.map((msg, i) => {
@@ -108,14 +127,18 @@ export async function POST(request: NextRequest) {
       return { role: msg.role, content: msg.content }
     })
 
+    const systemContent = tentaMode
+      ? SYSTEM_PROMPT + TENTA_MODE_PROMPT
+      : SYSTEM_PROMPT
+
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'system', content: systemContent },
         ...openaiMessages,
       ],
       response_format: { type: 'json_object' },
-      temperature: 0.5,
+      temperature: 0.8,
     })
 
     const rawText = completion.choices[0]?.message?.content ?? '{}'
@@ -142,6 +165,9 @@ export async function POST(request: NextRequest) {
             question: String(c.question).trim(),
             answer: String(c.answer).trim(),
             options: Array.isArray(c.options) ? c.options.map(String) : undefined,
+            correct_answers: Array.isArray(c.correct_answers) && c.correct_answers.length > 0
+              ? c.correct_answers.map(String)
+              : undefined,
           }))
       : []
 
