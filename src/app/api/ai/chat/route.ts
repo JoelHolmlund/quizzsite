@@ -4,52 +4,39 @@ import OpenAI from 'openai'
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
+// Use json_object response format — the model MUST return valid JSON.
+// The entire response is a single JSON object with "message" and "cards".
 const SYSTEM_PROMPT = `You are an expert educator and flashcard creator. You help students study by creating high-quality flashcards from their study materials.
 
-The user may upload a file (PDF, text) as their source material. They will then give you instructions in natural language — for example:
-- "Create flashcards from this"
-- "Make similar questions but harder"
-- "Focus only on integration by parts"
-- "Give me 5 multiple choice questions about derivatives"
-- "Translate these to Swedish"
+The user may upload a file (PDF, text) as their source material. They will then give you instructions in natural language.
 
-Always respond with:
-1. A short friendly message explaining what you did (in the same language the user wrote in)
-2. A JSON block with the generated flashcards
+You MUST respond with a valid JSON object in exactly this shape — nothing else, no extra text:
+{
+  "message": "Short friendly explanation in the same language the user wrote in",
+  "cards": [
+    {
+      "question": "Clear question that tests understanding",
+      "answer": "Concise answer (1-3 sentences)",
+      "options": ["Correct answer", "Plausible distractor 1", "Plausible distractor 2", "Plausible distractor 3"]
+    }
+  ]
+}
 
-Your response MUST follow this exact format:
-<message>Your friendly explanation here</message>
-<cards>
-[
-  {
-    "question": "Clear question here",
-    "answer": "Concise answer here",
-    "options": ["Correct answer", "Distractor 1", "Distractor 2", "Distractor 3"]
-  }
-]
-</cards>
-
-Rules for cards:
+Rules:
 - Generate between 3 and 20 cards depending on the instruction
-- The "options" array is for MCQ — always include the correct answer (same text as "answer") plus 3 plausible distractors, shuffled randomly
+- "options" is for MCQ: always include the correct answer (same text as "answer") + 3 plausible distractors, shuffled randomly
 - If the user asks for harder questions, make them more conceptual or multi-step
 - If the user asks to focus on a topic, only generate cards about that topic
-- Keep answers concise (1-3 sentences max)
-- ALWAYS include both <message> and <cards> tags in your response
+- Keep answers concise
 
-MATH FORMATTING RULES (very important):
-- All mathematical expressions MUST use LaTeX syntax so they render correctly with KaTeX
-- Inline math: wrap in single dollar signs, e.g. $x^2$, $\\frac{dy}{dx}$, $\\sqrt{x}$
-- Block/display math (standalone equations): wrap in double dollar signs, e.g. $$y = x^3 \\ln(x)$$
-- NEVER use plain text for math: write $x^2$ not x^2, $\\frac{a}{b}$ not a/b, $\\sqrt{x}$ not sqrt(x)
+MATH FORMATTING (very important — all math must use LaTeX so KaTeX can render it):
+- Inline math: $x^2$, $\\frac{dy}{dx}$, $\\sqrt{x}$
+- Display math: $$y = x^3 \\ln(x)$$
+- NEVER use plain text for math: write $x^2$ not "x^2", $\\frac{a}{b}$ not "a/b"
 - Greek letters: $\\alpha$, $\\beta$, $\\pi$, $\\theta$, $\\omega$, $\\Delta$, $\\Sigma$
 - Fractions: $\\frac{numerator}{denominator}$
 - Integrals: $\\int_a^b f(x)\\,dx$
-- Limits: $\\lim_{x \\to 0}$
-- Sums: $\\sum_{i=1}^{n}$
-- Superscripts/subscripts: $x^{n}$, $x_{n}$
-- Example question: "What is the derivative of $f(x) = x^3 \\ln(x)$?"
-- Example answer: "Using the product rule: $$f'(x) = 3x^2 \\ln(x) + x^2$$"`
+- Limits: $\\lim_{x \\to 0}$`
 
 export type ChatMessage = {
   role: 'user' | 'assistant'
@@ -83,7 +70,7 @@ export async function POST(request: NextRequest) {
 
     const messages: ChatMessage[] = JSON.parse(messagesRaw || '[]')
 
-    // If a file was uploaded, prepend its content to the first user message
+    // Extract file content if provided
     let fileContent = ''
     if (file) {
       if (file.type === 'text/plain') {
@@ -102,28 +89,19 @@ export async function POST(request: NextRequest) {
           )
         }
       }
-      // Truncate large files
       fileContent = fileContent.slice(0, 12000)
     }
 
-    // Build OpenAI messages array
-    const openaiMessages: OpenAI.Chat.ChatCompletionMessageParam[] = []
-
-    for (let i = 0; i < messages.length; i++) {
-      const msg = messages[i]
+    // Build OpenAI messages — attach file content to first user message
+    const openaiMessages: OpenAI.Chat.ChatCompletionMessageParam[] = messages.map((msg, i) => {
       if (i === 0 && fileContent && msg.role === 'user') {
-        // Attach file content to first user message
-        openaiMessages.push({
+        return {
           role: 'user',
           content: `Here is the source material:\n\n---\n${fileContent}\n---\n\n${msg.content}`,
-        })
-      } else {
-        openaiMessages.push({
-          role: msg.role,
-          content: msg.content,
-        })
+        }
       }
-    }
+      return { role: msg.role, content: msg.content }
+    })
 
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
@@ -131,64 +109,42 @@ export async function POST(request: NextRequest) {
         { role: 'system', content: SYSTEM_PROMPT },
         ...openaiMessages,
       ],
+      // Force valid JSON output — eliminates all parsing ambiguity
+      response_format: { type: 'json_object' },
       temperature: 0.7,
       max_tokens: 4000,
     })
 
-    const responseText = completion.choices[0]?.message?.content ?? ''
+    const responseText = completion.choices[0]?.message?.content ?? '{}'
 
-    // ── Extract message text ────────────────────────────────────────────────
-    const messageMatch = responseText.match(/<message>([\s\S]*?)<\/message>/)
-    const aiMessage = messageMatch?.[1]?.trim()
-      ?? responseText.split('\n')[0]?.trim()
-      ?? 'Här är dina flashcards!'
+    // Parse the JSON response — should always succeed with json_object mode
+    let parsed: { message?: string; cards?: unknown[] }
+    try {
+      parsed = JSON.parse(responseText)
+    } catch {
+      console.error('Failed to parse AI JSON response:', responseText.slice(0, 500))
+      return NextResponse.json(
+        { error: 'AI returnerade ett ogiltigt svar. Försök igen.' },
+        { status: 500 }
+      )
+    }
 
-    // ── Extract cards JSON — three strategies, first one that works wins ────
+    const aiMessage = typeof parsed.message === 'string' && parsed.message.trim()
+      ? parsed.message.trim()
+      : 'Här är dina flashcards!'
+
     type RawCard = { question?: unknown; answer?: unknown; options?: unknown }
-
-    function sanitizeCards(parsed: unknown): GeneratedCard[] {
-      const arr = Array.isArray(parsed) ? parsed : (parsed as { cards?: unknown })?.cards
-      if (!Array.isArray(arr)) return []
-      return arr
-        .filter((c: RawCard) => c.question && c.answer)
-        .map((c: RawCard) => ({
-          question: String(c.question).trim(),
-          answer: String(c.answer).trim(),
-          options: Array.isArray(c.options) ? (c.options as unknown[]).map(String) : undefined,
-        }))
-    }
-
-    let cards: GeneratedCard[] = []
-
-    // Strategy 1: <cards>[...]</cards> XML tags
-    const xmlCardsMatch = responseText.match(/<cards>([\s\S]*?)<\/cards>/)
-    if (xmlCardsMatch?.[1] && cards.length === 0) {
-      try { cards = sanitizeCards(JSON.parse(xmlCardsMatch[1].trim())) } catch { /* next */ }
-    }
-
-    // Strategy 2: ```json [...] ``` or ``` [...] ``` code fences
-    if (cards.length === 0) {
-      const fenceMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)\s*```/)
-      if (fenceMatch?.[1]) {
-        try { cards = sanitizeCards(JSON.parse(fenceMatch[1].trim())) } catch { /* next */ }
-      }
-    }
-
-    // Strategy 3: first [...] JSON array anywhere in the response
-    if (cards.length === 0) {
-      const arrayMatch = responseText.match(/(\[[\s\S]*?\])/)
-      if (arrayMatch?.[1]) {
-        try { cards = sanitizeCards(JSON.parse(arrayMatch[1])) } catch { /* give up */ }
-      }
-    }
-
-    // Strategy 4: { "cards": [...] } object
-    if (cards.length === 0) {
-      const objMatch = responseText.match(/(\{[\s\S]*?\})/)
-      if (objMatch?.[1]) {
-        try { cards = sanitizeCards(JSON.parse(objMatch[1])) } catch { /* give up */ }
-      }
-    }
+    const cards: GeneratedCard[] = Array.isArray(parsed.cards)
+      ? (parsed.cards as RawCard[])
+          .filter((c) => c.question && c.answer)
+          .map((c) => ({
+            question: String(c.question).trim(),
+            answer: String(c.answer).trim(),
+            options: Array.isArray(c.options)
+              ? (c.options as unknown[]).map(String)
+              : undefined,
+          }))
+      : []
 
     return NextResponse.json({ message: aiMessage, cards })
   } catch (error) {
