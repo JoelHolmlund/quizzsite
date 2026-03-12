@@ -20,6 +20,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import CardForm from '@/components/quiz/CardForm'
+import type { CardFormValues } from '@/components/quiz/CardForm'
 import AIChatDialog from '@/components/ai/AIChatDialog'
 import {
   ArrowLeft,
@@ -122,12 +123,19 @@ export default function QuizDetailPage() {
     setSavingQuiz(false)
   }
 
-  async function handleAddCard(values: { question: string; answer: string }) {
+  async function handleAddCard(values: CardFormValues) {
     if (!quiz) return
     const position = cards.length
     const { data: newCardRaw, error } = await supabase
       .from('cards')
-      .insert({ quiz_id: quiz.id, question: values.question, answer: values.answer, position })
+      .insert({
+        quiz_id: quiz.id,
+        question: values.question,
+        answer: values.answer,
+        options: values.options.length > 0 ? values.options : null,
+        correct_answers: values.correct_answers.length > 0 ? values.correct_answers : null,
+        position,
+      })
       .select()
       .single()
 
@@ -139,11 +147,16 @@ export default function QuizDetailPage() {
     }
   }
 
-  async function handleUpdateCard(values: { question: string; answer: string }) {
+  async function handleUpdateCard(values: CardFormValues) {
     if (!editingCard) return
     const { data: updatedCardRaw, error } = await supabase
       .from('cards')
-      .update({ question: values.question, answer: values.answer })
+      .update({
+        question: values.question,
+        answer: values.answer,
+        options: values.options.length > 0 ? values.options : null,
+        correct_answers: values.correct_answers.length > 0 ? values.correct_answers : null,
+      })
       .eq('id', editingCard.id)
       .select()
       .single()
@@ -393,25 +406,63 @@ export default function QuizDetailPage() {
                 >
                   {editingCard?.id === card.id ? (
                     <CardForm
-                      initialValues={{ question: card.question, answer: card.answer }}
+                      initialValues={{
+                        question: card.question,
+                        answer: card.answer,
+                        options: card.options ?? [],
+                        correct_answers: card.correct_answers ?? [],
+                      }}
                       onSubmit={handleUpdateCard}
                       onCancel={() => setEditingCard(null)}
-                      submitLabel="Save card"
+                      submitLabel="Spara kort"
                     />
                   ) : (
                     <div className="flex gap-4">
                       <span className="flex-shrink-0 w-7 h-7 rounded-full bg-violet-100 dark:bg-violet-950/50 text-violet-600 text-xs font-bold flex items-center justify-center">
                         {i + 1}
                       </span>
-                      <div className="flex-1 min-w-0 grid sm:grid-cols-2 gap-4">
-                        <div>
-                          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Question</p>
-                          <p className="text-sm font-medium leading-relaxed">{card.question}</p>
+                      <div className="flex-1 min-w-0 space-y-3">
+                        <div className="grid sm:grid-cols-2 gap-4">
+                          <div>
+                            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Fråga</p>
+                            <p className="text-sm font-medium leading-relaxed">{card.question}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Svar</p>
+                            <p className="text-sm text-muted-foreground leading-relaxed">{card.answer}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Answer</p>
-                          <p className="text-sm text-muted-foreground leading-relaxed">{card.answer}</p>
-                        </div>
+                        {card.options && card.options.length > 0 && (
+                          <div>
+                            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+                              Svarsalternativ
+                              {card.correct_answers && card.correct_answers.length > 1 && (
+                                <span className="ml-2 normal-case font-normal text-violet-500">
+                                  ({card.correct_answers.length} rätta svar)
+                                </span>
+                              )}
+                            </p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {card.options.map((opt, oi) => {
+                                const isCorrect = card.correct_answers
+                                  ? card.correct_answers.includes(opt)
+                                  : opt === card.answer
+                                return (
+                                  <span
+                                    key={oi}
+                                    className={`text-xs px-2 py-0.5 rounded-full border font-medium ${
+                                      isCorrect
+                                        ? 'bg-emerald-50 border-emerald-300 text-emerald-700 dark:bg-emerald-950/30 dark:border-emerald-700 dark:text-emerald-400'
+                                        : 'bg-muted border-border text-muted-foreground'
+                                    }`}
+                                  >
+                                    {isCorrect && '✓ '}{opt}
+                                  </span>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        )}
                       </div>
                       {isOwner && (
                         <div className="flex gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">

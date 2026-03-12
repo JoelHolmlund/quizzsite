@@ -97,6 +97,7 @@ export interface Database {
           question: string
           answer: string
           options: string[] | null
+          correct_answers: string[] | null
           position: number
           created_at: string
           updated_at: string
@@ -107,6 +108,7 @@ export interface Database {
           question: string
           answer: string
           options?: string[] | null
+          correct_answers?: string[] | null
           position?: number
           created_at?: string
           updated_at?: string
@@ -117,6 +119,7 @@ export interface Database {
           question?: string
           answer?: string
           options?: string[] | null
+          correct_answers?: string[] | null
           position?: number
           updated_at?: string
         }
