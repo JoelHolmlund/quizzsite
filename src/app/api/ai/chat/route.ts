@@ -59,13 +59,20 @@ export type ChatMessage = {
 
 const TENTA_MODE_PROMPT = `
 TENTA-LÄGE AKTIVERAT — Extrahera frågorna exakt som de står i tentan:
+
+VIKTIGT — IGNORERA ALLTID försättssidor och administrativa sidor. En försättssida innehåller typiskt:
+kurskod, kursnamn, datum, tid, institution/skola, lärare, antal poäng, instruktioner, hjälpmedel.
+Dessa sidor innehåller INGA examineringsfrågor — hoppa över dem helt.
+
+Fokusera ENBART på sidor som innehåller faktiska tentafrågor (fråga 1, fråga 2, uppgift 1 etc.).
+
 - Kopiera varje fråga ORDAGRANT från källmaterialet. Ändra INTE formuleringen, lägg INTE till egna frågor.
 - Om tentan har svarsalternativ (A/B/C/D), använd dem exakt. Annars hittar du på 3 rimliga distraktorer.
 - Tentan innehåller INGA svar — det är ditt jobb att ta fram korrekta svar med din ämneskunskap.
 - Fyll i "answer" med en tydlig förklaring av vad som är rätt och varför.
 - Om flera alternativ är korrekta enligt din kunskap, lista dem i "correct_answers".
 - Om bara ett alternativ är korrekt, sätt "correct_answers" till en array med enbart det alternativet.
-- Extrahera ALLA frågor från tentan, hoppa inte över några.`
+- Extrahera ALLA frågor från ALLA sidor (utom försättssidan), hoppa inte över några.`
 
 export type GeneratedCard = {
   question: string
