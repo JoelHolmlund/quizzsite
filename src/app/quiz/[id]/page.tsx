@@ -220,6 +220,7 @@ export default function QuizDetailPage() {
       question: c.question,
       answer: c.answer,
       options: c.options ?? null,
+      correct_answers: c.correct_answers ?? null,
       position: startPosition + i,
     }))
 

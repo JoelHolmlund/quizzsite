@@ -58,21 +58,38 @@ export type ChatMessage = {
 }
 
 const TENTA_MODE_PROMPT = `
-TENTA-LÄGE AKTIVERAT — Extrahera frågorna exakt som de står i tentan:
+TENTA-LÄGE AKTIVERAT.
 
-VIKTIGT — IGNORERA ALLTID försättssidor och administrativa sidor. En försättssida innehåller typiskt:
-kurskod, kursnamn, datum, tid, institution/skola, lärare, antal poäng, instruktioner, hjälpmedel.
-Dessa sidor innehåller INGA examineringsfrågor — hoppa över dem helt.
+DIN UPPGIFT: Hitta sidorna med faktiska tentafrågor och kopiera dem ordagrant.
 
-Fokusera ENBART på sidor som innehåller faktiska tentafrågor (fråga 1, fråga 2, uppgift 1 etc.).
+===== STEG 1 — IGNORERA OMSLAG OCH ADMINISTRATIVA SIDOR =====
+En försättssida/omslagssida innehåller: kurskod, kursnamn, datum, tid, institution, lärare, poäng, hjälpmedel, instruktioner.
+Generera INGA frågor från sådana sidor. Hoppa över dem helt.
 
-- Kopiera varje fråga ORDAGRANT från källmaterialet. Ändra INTE formuleringen, lägg INTE till egna frågor.
-- Om tentan har svarsalternativ (A/B/C/D), använd dem exakt. Annars hittar du på 3 rimliga distraktorer.
-- Tentan innehåller INGA svar — det är ditt jobb att ta fram korrekta svar med din ämneskunskap.
-- Fyll i "answer" med en tydlig förklaring av vad som är rätt och varför.
-- Om flera alternativ är korrekta enligt din kunskap, lista dem i "correct_answers".
-- Om bara ett alternativ är korrekt, sätt "correct_answers" till en array med enbart det alternativet.
-- Extrahera ALLA frågor från ALLA sidor (utom försättssidan), hoppa inte över några.`
+===== STEG 2 — EXTRAHERA FRÅGORNA ORDAGRANT =====
+Hitta sidorna med faktiska uppgifter (märkta "Fråga 1", "Uppgift 1", "Question 1" etc.).
+Kopiera varje frågetext EXAKT som den är skriven — ord för ord, tecken för tecken.
+
+FÖRBJUDET — generera ALDRIG:
+- Frågor om vad tentan handlar om ("Vad är huvudtemat i tentan?")
+- Frågor om omslagets innehåll ("Vilket kursnamn visas?", "Vilket datum?")
+- Frågor om tentans struktur ("Vilken typ av frågor finns i del 2?")
+- Egna påhittade frågor som inte finns i dokumentet
+
+RÄTT exempel — om tentan har: "Fråga 3: Vilka fyra steg ingår i PDCA-cykeln?"
+→ question: "Vilka fyra steg ingår i PDCA-cykeln?"  ✓
+
+FEL exempel:
+→ question: "Vad handlar fråga 3 om?" ✗
+→ question: "Vilken fråga på tentan berör PDCA?" ✗
+
+===== STEG 3 — LÄGG TILL SVAR =====
+Tentan har inga svar. Använd din ämneskunskap för att:
+- Fylla i "answer" med en tydlig förklaring av vad som är rätt och varför.
+- Om tentan har svarsalternativ (A/B/C/D), använd dem exakt som distraktorer.
+- Annars konstruera 3 rimliga men felaktiga distraktorer.
+- Sätt "correct_answers" till en array med alla korrekta alternativ.
+- Extrahera ALLA frågor, hoppa inte över några.`
 
 export type GeneratedCard = {
   question: string
