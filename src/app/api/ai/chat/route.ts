@@ -29,14 +29,24 @@ Rules:
 - If the user asks to focus on a topic, only generate cards about that topic
 - Keep answers concise
 
-MATH FORMATTING (very important — all math must use LaTeX so KaTeX can render it):
-- Inline math: $x^2$, $\\frac{dy}{dx}$, $\\sqrt{x}$
-- Display math: $$y = x^3 \\ln(x)$$
-- NEVER use plain text for math: write $x^2$ not "x^2", $\\frac{a}{b}$ not "a/b"
-- Greek letters: $\\alpha$, $\\beta$, $\\pi$, $\\theta$, $\\omega$, $\\Delta$, $\\Sigma$
-- Fractions: $\\frac{numerator}{denominator}$
-- Integrals: $\\int_a^b f(x)\\,dx$
-- Limits: $\\lim_{x \\to 0}$`
+MATH FORMATTING — CRITICAL RULES:
+Since your output is a JSON string, ALL LaTeX backslashes MUST be doubled (\\).
+A single backslash like \frac is INVALID in JSON and will break rendering.
+You MUST write \\frac, \\lim, \\to, \\tan, \\sin, \\cos, \\int, \\sum, \\sqrt, \\text, \\frac, \\alpha, \\beta, \\pi etc.
+
+Correct examples (double backslash):
+- Fraction: $\\frac{dy}{dx}$
+- Limit: $\\lim_{x \\to 0}$
+- Integral: $\\int_a^b f(x)\\,dx$
+- Square root: $\\sqrt{x}$
+- Trig: $\\tan(x)$, $\\sin(x)$, $\\cos(x)$
+- Greek: $\\alpha$, $\\beta$, $\\pi$, $\\theta$, $\\Delta$, $\\Sigma$
+- Display math block: $$y = x^3 \\ln(x)$$
+
+WRONG (will break): $\frac{dy}{dx}$, $\lim_{x \to 0}$, $\sqrt{x}$
+CORRECT: $\\frac{dy}{dx}$, $\\lim_{x \\to 0}$, $\\sqrt{x}$
+
+NEVER use plain text for math: write $x^2$ not x^2, $\\frac{a}{b}$ not a/b`
 
 export type ChatMessage = {
   role: 'user' | 'assistant'
@@ -115,14 +125,20 @@ export async function POST(request: NextRequest) {
       max_tokens: 4000,
     })
 
-    const responseText = completion.choices[0]?.message?.content ?? '{}'
+    const rawText = completion.choices[0]?.message?.content ?? '{}'
+
+    // Fix LaTeX backslash escaping: OpenAI sometimes outputs \frac instead of \\frac
+    // in JSON strings. JSON interprets \f as form feed (U+000C), \t as tab, etc.,
+    // which strips the backslash. We fix single backslashes before letters before parsing.
+    // The negative lookbehind (?<!\\) ensures already-doubled \\ are left alone.
+    const responseText = rawText.replace(/(?<!\\)\\([a-zA-Z])/g, '\\\\$1')
 
     // Parse the JSON response — should always succeed with json_object mode
     let parsed: { message?: string; cards?: unknown[] }
     try {
       parsed = JSON.parse(responseText)
     } catch {
-      console.error('Failed to parse AI JSON response:', responseText.slice(0, 500))
+      console.error('Failed to parse AI JSON response:', rawText.slice(0, 500))
       return NextResponse.json(
         { error: 'AI returnerade ett ogiltigt svar. Försök igen.' },
         { status: 500 }
