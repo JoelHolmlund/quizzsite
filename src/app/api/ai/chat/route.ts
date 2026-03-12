@@ -105,6 +105,9 @@ export async function POST(request: NextRequest) {
       } else if (file.type === 'application/pdf') {
         try {
           const arrayBuffer = await file.arrayBuffer()
+          // Save base64 BEFORE unpdf consumes the ArrayBuffer (it detaches it)
+          const base64Encoded = Buffer.from(arrayBuffer.slice(0)).toString('base64')
+
           const { extractText } = await import('unpdf')
           const { text } = await extractText(new Uint8Array(arrayBuffer), { mergePages: true })
           fileContent = text
@@ -112,8 +115,7 @@ export async function POST(request: NextRequest) {
           // If extracted text is too short the PDF is image-based (scanned).
           // Fall back to sending it as base64 so GPT-4o can read it visually.
           if (fileContent.trim().length < 100) {
-            const buffer = Buffer.from(arrayBuffer)
-            pdfBase64 = `data:application/pdf;base64,${buffer.toString('base64')}`
+            pdfBase64 = `data:application/pdf;base64,${base64Encoded}`
             fileContent = ''
           }
         } catch (pdfErr) {
