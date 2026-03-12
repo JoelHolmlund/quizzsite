@@ -35,7 +35,21 @@ Rules for cards:
 - If the user asks for harder questions, make them more conceptual or multi-step
 - If the user asks to focus on a topic, only generate cards about that topic
 - Keep answers concise (1-3 sentences max)
-- ALWAYS include both <message> and <cards> tags in your response`
+- ALWAYS include both <message> and <cards> tags in your response
+
+MATH FORMATTING RULES (very important):
+- All mathematical expressions MUST use LaTeX syntax so they render correctly with KaTeX
+- Inline math: wrap in single dollar signs, e.g. $x^2$, $\\frac{dy}{dx}$, $\\sqrt{x}$
+- Block/display math (standalone equations): wrap in double dollar signs, e.g. $$y = x^3 \\ln(x)$$
+- NEVER use plain text for math: write $x^2$ not x^2, $\\frac{a}{b}$ not a/b, $\\sqrt{x}$ not sqrt(x)
+- Greek letters: $\\alpha$, $\\beta$, $\\pi$, $\\theta$, $\\omega$, $\\Delta$, $\\Sigma$
+- Fractions: $\\frac{numerator}{denominator}$
+- Integrals: $\\int_a^b f(x)\\,dx$
+- Limits: $\\lim_{x \\to 0}$
+- Sums: $\\sum_{i=1}^{n}$
+- Superscripts/subscripts: $x^{n}$, $x_{n}$
+- Example question: "What is the derivative of $f(x) = x^3 \\ln(x)$?"
+- Example answer: "Using the product rule: $$f'(x) = 3x^2 \\ln(x) + x^2$$"`
 
 export type ChatMessage = {
   role: 'user' | 'assistant'

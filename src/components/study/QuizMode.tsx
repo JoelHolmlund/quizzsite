@@ -7,6 +7,7 @@ import { Progress } from '@/components/ui/progress'
 import { CheckCircle2, RotateCcw, XCircle } from 'lucide-react'
 import type { Card } from '@/types/database'
 import { cn } from '@/lib/utils'
+import MathContent from '@/components/MathContent'
 
 interface QuizModeProps {
   cards: Card[]
@@ -165,7 +166,9 @@ export default function QuizMode({ cards }: QuizModeProps) {
       {/* Question */}
       <div className="rounded-2xl border-2 border-violet-200 dark:border-violet-800 bg-gradient-to-br from-violet-50 to-white dark:from-violet-950/20 dark:to-gray-900 p-8 shadow-sm">
         <p className="text-xs font-semibold uppercase tracking-widest text-violet-500 mb-3">Question</p>
-        <p className="text-xl font-semibold leading-relaxed">{current.card.question}</p>
+        <div className="text-xl font-semibold">
+          <MathContent>{current.card.question}</MathContent>
+        </div>
       </div>
 
       {/* Options */}
@@ -207,7 +210,9 @@ export default function QuizMode({ cards }: QuizModeProps) {
                 )}>
                   {['A', 'B', 'C', 'D'][i]}
                 </span>
-                <span>{option}</span>
+                <span className="flex-1 text-left">
+                  <MathContent variant="compact">{option}</MathContent>
+                </span>
                 {isAnswered && isRight && <CheckCircle2 className="h-4 w-4 ml-auto text-emerald-500 flex-shrink-0" />}
                 {isAnswered && isSelected && !isRight && <XCircle className="h-4 w-4 ml-auto text-red-500 flex-shrink-0" />}
               </div>

@@ -59,6 +59,10 @@ export default function QuizDetailPage() {
   const [editingCard, setEditingCard] = useState<CardRow | null>(null)
   const [deletingCardId, setDeletingCardId] = useState<string | null>(null)
 
+  // Delete quiz state
+  const [deletingQuiz, setDeletingQuiz] = useState(false)
+  const [deleteQuizDialogOpen, setDeleteQuizDialogOpen] = useState(false)
+
   const fetchData = useCallback(async () => {
     const { data: quizRaw, error: quizError } = await supabase
       .from('quizzes')
@@ -184,7 +188,21 @@ export default function QuizDetailPage() {
 
   function handleShare() {
     navigator.clipboard.writeText(window.location.href)
-    toast.success('Link copied to clipboard!')
+    toast.success('Länk kopierad!')
+  }
+
+  async function handleDeleteQuiz() {
+    if (!quiz) return
+    setDeletingQuiz(true)
+    const { error } = await supabase.from('quizzes').delete().eq('id', quiz.id)
+    if (error) {
+      toast.error('Kunde inte radera quizet')
+      setDeletingQuiz(false)
+    } else {
+      toast.success('Quiz raderat')
+      router.push('/dashboard')
+      router.refresh()
+    }
   }
 
   if (loading) {
@@ -213,12 +231,23 @@ export default function QuizDetailPage() {
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" onClick={handleShare} className="gap-1.5">
               <Share2 className="h-4 w-4" />
-              <span className="hidden sm:inline">Share</span>
+              <span className="hidden sm:inline">Dela</span>
             </Button>
+            {isOwner && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setDeleteQuizDialogOpen(true)}
+                className="gap-1.5 text-destructive hover:text-destructive hover:bg-destructive/10"
+              >
+                <Trash2 className="h-4 w-4" />
+                <span className="hidden sm:inline">Radera quiz</span>
+              </Button>
+            )}
             <Link href={`/quiz/${quiz.id}/study`}>
               <Button size="sm" className="bg-violet-600 hover:bg-violet-700 gap-1.5">
                 <GraduationCap className="h-4 w-4" />
-                Study
+                Studera
               </Button>
             </Link>
           </div>
@@ -385,16 +414,52 @@ export default function QuizDetailPage() {
       <Dialog open={!!deletingCardId} onOpenChange={(v) => !v && setDeletingCardId(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete card?</DialogTitle>
-            <DialogDescription>This will permanently remove this card from the quiz.</DialogDescription>
+            <DialogTitle>Radera kort?</DialogTitle>
+            <DialogDescription>Kortet tas bort permanent från quizet.</DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeletingCardId(null)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setDeletingCardId(null)}>Avbryt</Button>
             <Button
               variant="destructive"
               onClick={() => deletingCardId && handleDeleteCard(deletingCardId)}
             >
-              Delete card
+              Radera kort
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete quiz dialog */}
+      <Dialog open={deleteQuizDialogOpen} onOpenChange={setDeleteQuizDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Radera hela quizet?</DialogTitle>
+            <DialogDescription>
+              Detta raderar &quot;{quiz.title}&quot; och alla {cards.length} kort permanent.
+              Åtgärden kan inte ångras.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteQuizDialogOpen(false)}
+              disabled={deletingQuiz}
+            >
+              Avbryt
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteQuiz}
+              disabled={deletingQuiz}
+            >
+              {deletingQuiz ? (
+                <><Loader2 className="h-4 w-4 animate-spin mr-2" />Raderar…</>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Radera quiz
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

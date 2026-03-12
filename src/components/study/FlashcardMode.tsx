@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { ChevronLeft, ChevronRight, RotateCcw, Shuffle } from 'lucide-react'
 import type { Card } from '@/types/database'
+import MathContent from '@/components/MathContent'
 
 interface FlashcardModeProps {
   cards: Card[]
@@ -113,7 +114,9 @@ export default function FlashcardMode({ cards: initialCards }: FlashcardModeProp
             style={{ backfaceVisibility: 'hidden' }}
           >
             <p className="text-xs font-semibold uppercase tracking-widest text-violet-500 mb-4">Question</p>
-            <p className="text-xl font-semibold text-center leading-relaxed">{current.question}</p>
+            <div className="text-xl font-semibold text-center w-full">
+              <MathContent>{current.question}</MathContent>
+            </div>
             <p className="text-xs text-muted-foreground mt-6">Click to reveal answer</p>
           </div>
 
@@ -123,7 +126,9 @@ export default function FlashcardMode({ cards: initialCards }: FlashcardModeProp
             style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
           >
             <p className="text-xs font-semibold uppercase tracking-widest text-emerald-500 mb-4">Answer</p>
-            <p className="text-xl font-semibold text-center leading-relaxed">{current.answer}</p>
+            <div className="text-xl font-semibold text-center w-full">
+              <MathContent>{current.answer}</MathContent>
+            </div>
             <p className="text-xs text-muted-foreground mt-6">Click to flip back</p>
           </div>
         </div>

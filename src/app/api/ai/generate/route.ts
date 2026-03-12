@@ -23,7 +23,22 @@ Rules:
 - Answers should be factual and concise
 - The "options" array must always include the correct answer (matching the "answer" field exactly) plus 3 plausible distractors
 - Shuffle the options array so the correct answer is not always first
-- Return ONLY valid JSON, no markdown, no extra text`
+- Return ONLY valid JSON, no markdown, no extra text
+
+MATH FORMATTING RULES (very important):
+- All mathematical expressions MUST use LaTeX syntax so they render correctly with KaTeX
+- Inline math: wrap in single dollar signs, e.g. $x^2$, $\\frac{dy}{dx}$, $\\sqrt{x}$
+- Block/display math (for standalone equations): wrap in double dollar signs, e.g. $$y = x^3 \\ln(x)$$
+- NEVER use plain text for math: write $x^2$ not x^2, $\\frac{a}{b}$ not a/b, $\\sqrt{x}$ not sqrt(x)
+- Greek letters: $\\alpha$, $\\beta$, $\\pi$, $\\theta$, $\\omega$, $\\Delta$, $\\Sigma$, etc.
+- Fractions: $\\frac{numerator}{denominator}$
+- Integrals: $\\int_a^b f(x)\\,dx$
+- Limits: $\\lim_{x \\to 0}$
+- Sums: $\\sum_{i=1}^{n}$
+- Superscripts: $x^{n}$, subscripts: $x_{n}$
+- Absolute value: $|x|$ or $\\lvert x \\rvert$
+- Example question: "What is the derivative of $f(x) = x^3 \\ln(x)$?"
+- Example answer: "Using the product rule: $$f'(x) = 3x^2 \\ln(x) + x^2$$"`
 
 export async function POST(request: NextRequest) {
   // Auth check
