@@ -80,11 +80,13 @@ ALTER TABLE quizzes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE cards ENABLE ROW LEVEL SECURITY;
 ALTER TABLE quiz_likes ENABLE ROW LEVEL SECURITY;
 
--- Profiles: users can only read/write their own profile
+-- Profiles: anyone can read profiles (needed for creator names on explore page)
+-- but only the owner can write their own profile
 DROP POLICY IF EXISTS "Users can view own profile" ON profiles;
-CREATE POLICY "Users can view own profile"
+DROP POLICY IF EXISTS "Anyone can view profiles" ON profiles;
+CREATE POLICY "Anyone can view profiles"
   ON profiles FOR SELECT
-  USING (auth.uid() = id);
+  USING (true);
 
 DROP POLICY IF EXISTS "Users can update own profile" ON profiles;
 CREATE POLICY "Users can update own profile"

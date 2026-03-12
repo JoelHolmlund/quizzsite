@@ -30,6 +30,7 @@ import {
   Share2,
   Sparkles,
   Trash2,
+  Sigma,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import type { Quiz, Card, CardInsert } from '@/types/database'
@@ -62,6 +63,9 @@ export default function QuizDetailPage() {
   // Delete quiz state
   const [deletingQuiz, setDeletingQuiz] = useState(false)
   const [deleteQuizDialogOpen, setDeleteQuizDialogOpen] = useState(false)
+
+  // LaTeX formatting state — tracks which card id is currently being formatted
+  const [formattingCardId, setFormattingCardId] = useState<string | null>(null)
 
   const fetchData = useCallback(async () => {
     const { data: quizRaw, error: quizError } = await supabase
@@ -163,6 +167,34 @@ export default function QuizDetailPage() {
       toast.success('Card deleted')
     }
     setDeletingCardId(null)
+  }
+
+  async function handleFormatLatex(card: CardRow) {
+    setFormattingCardId(card.id)
+    try {
+      const res = await fetch('/api/ai/format-latex', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: card.question, answer: card.answer }),
+      })
+      if (!res.ok) throw new Error('Formattering misslyckades')
+      const { question, answer } = await res.json() as { question: string; answer: string }
+
+      const { data: updatedRaw, error } = await supabase
+        .from('cards')
+        .update({ question, answer })
+        .eq('id', card.id)
+        .select()
+        .single()
+
+      if (error) throw new Error(error.message)
+      setCards((prev) => prev.map((c) => (c.id === card.id ? (updatedRaw as CardRow) : c)))
+      toast.success('Kortet formatterades med LaTeX!')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Något gick fel')
+    } finally {
+      setFormattingCardId(null)
+    }
   }
 
   async function handleAICards(
@@ -383,6 +415,20 @@ export default function QuizDetailPage() {
                       </div>
                       {isOwner && (
                         <div className="flex gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-violet-500 hover:text-violet-700 hover:bg-violet-50"
+                            title="Formattera matematik med LaTeX"
+                            disabled={formattingCardId === card.id}
+                            onClick={() => handleFormatLatex(card)}
+                          >
+                            {formattingCardId === card.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Sigma className="h-3.5 w-3.5" />
+                            )}
+                          </Button>
                           <Button
                             variant="ghost"
                             size="icon"
