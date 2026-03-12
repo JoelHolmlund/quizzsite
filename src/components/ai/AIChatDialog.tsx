@@ -387,6 +387,7 @@ export default function AIChatDialog({
       question: c.question,
       answer: c.answer,
       options: c.options ?? null,
+      correct_answers: null,
       position: i,
     }))
     onCardsGenerated(mapped)

@@ -105,6 +105,7 @@ export default function AIGenerateDialog({ quizId, onCardsGenerated, children }:
       question: c.question,
       answer: c.answer,
       options: c.options ?? null,
+      correct_answers: null,
       position: i,
     }))
     onCardsGenerated(cards)
