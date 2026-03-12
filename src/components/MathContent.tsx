@@ -12,11 +12,39 @@ interface MathContentProps {
   variant?: 'prose' | 'compact'
 }
 
+/**
+ * Normalise various LaTeX delimiter styles that AIs commonly produce so that
+ * remark-math (which only understands $…$ and $$…$$) can render them.
+ *
+ * Conversions applied (in order):
+ *  1. \[…\]  → $$…$$   (display math)
+ *  2. \(…\)  → $…$     (inline math)
+ *  3. bare \begin{…}…\end{…} blocks not already inside $…$ → $$…$$
+ */
+function normaliseMathDelimiters(text: string): string {
+  // 1. \[…\] → $$…$$
+  text = text.replace(/\\\[([\s\S]*?)\\\]/g, (_m, inner: string) => `\n$$\n${inner}\n$$\n`)
+
+  // 2. \(…\) → $…$
+  text = text.replace(/\\\(([\s\S]*?)\\\)/g, (_m, inner: string) => `$${inner}$`)
+
+  // 3. bare \begin{env}…\end{env} not already inside $…$
+  //    A simple look-around for a preceding $ is imperfect but catches the common case
+  text = text.replace(
+    /(?<!\$)(\\begin\{[^}]+\}[\s\S]*?\\end\{[^}]+\})(?!\$)/g,
+    (_m, inner: string) => `\n$$\n${inner}\n$$\n`,
+  )
+
+  return text
+}
+
 export default function MathContent({
   children,
   className,
   variant = 'prose',
 }: MathContentProps) {
+  const content = normaliseMathDelimiters(children)
+
   return (
     <div
       className={cn(
@@ -28,6 +56,9 @@ export default function MathContent({
       <ReactMarkdown
         remarkPlugins={[remarkMath]}
         rehypePlugins={[rehypeKatex]}
+        // Pass normalised content instead of raw children
+        // eslint-disable-next-line react/no-children-prop
+        children={content}
         components={{
           p: ({ children }) => (
             <span className={cn('block', variant === 'prose' && 'leading-relaxed')}>
@@ -46,9 +77,8 @@ export default function MathContent({
             <ol className="list-decimal list-inside space-y-0.5">{children}</ol>
           ),
         }}
-      >
-        {children}
-      </ReactMarkdown>
+      />
+
     </div>
   )
 }

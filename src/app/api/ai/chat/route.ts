@@ -34,14 +34,16 @@ Since your output is a JSON string, ALL LaTeX backslashes MUST be doubled (\\).
 A single backslash like \frac is INVALID in JSON and will break rendering.
 You MUST write \\frac, \\lim, \\to, \\tan, \\sin, \\cos, \\int, \\sum, \\sqrt, \\text, \\frac, \\alpha, \\beta, \\pi etc.
 
-Correct examples (double backslash):
+Correct examples (double backslash, ALWAYS inside $ or $$):
 - Fraction: $\\frac{dy}{dx}$
 - Limit: $\\lim_{x \\to 0}$
 - Integral: $\\int_a^b f(x)\\,dx$
 - Square root: $\\sqrt{x}$
 - Trig: $\\tan(x)$, $\\sin(x)$, $\\cos(x)$
 - Greek: $\\alpha$, $\\beta$, $\\pi$, $\\theta$, $\\Delta$, $\\Sigma$
-- Display math block: $$y = x^3 \\ln(x)$$
+- Display math block (equations on their own line): $$y = x^3 \\ln(x)$$
+- Piecewise / cases (MUST use $$ not $): $$f(x) = \\begin{cases} x^2, & x \\neq 0 \\\\ 0, & x = 0 \\end{cases}$$
+- NEVER write \\begin{cases} or \\begin{align} outside of $$...$$
 
 WRONG (will break): $\frac{dy}{dx}$, $\lim_{x \to 0}$, $\sqrt{x}$
 CORRECT: $\\frac{dy}{dx}$, $\\lim_{x \\to 0}$, $\\sqrt{x}$
