@@ -68,7 +68,7 @@ export default function SignupPage() {
             <div className="bg-violet-600 text-white p-2 rounded-xl">
               <BookOpen className="h-6 w-6" />
             </div>
-            <span className="text-2xl font-bold text-gray-900 dark:text-white">Quizzlet</span>
+            <span className="text-2xl font-bold text-gray-900 dark:text-white">TentaKung</span>
           </div>
           <h1 className="text-2xl font-semibold tracking-tight text-gray-900 dark:text-white">Create an account</h1>
           <p className="text-sm text-muted-foreground">Start building your flashcard decks today</p>

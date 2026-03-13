@@ -96,7 +96,7 @@ export default async function ExplorePage({
               <div className="bg-violet-600 text-white p-1.5 rounded-lg">
                 <Compass className="h-4 w-4" />
               </div>
-              Quizzlet
+              TentaKung
             </Link>
             <div className="flex gap-3">
               <Link href="/login">

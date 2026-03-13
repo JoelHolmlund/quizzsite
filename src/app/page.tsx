@@ -13,7 +13,7 @@ export default function LandingPage() {
             <div className="bg-violet-600 text-white p-1.5 rounded-lg">
               <BookOpen className="h-4 w-4" />
             </div>
-            <span>Quizzlet</span>
+            <span>TentaKung</span>
           </div>
           <div className="flex gap-3">
             <Link href="/login">
@@ -92,7 +92,7 @@ export default function LandingPage() {
             <div className="bg-violet-600 text-white p-1 rounded-md">
               <BookOpen className="h-3 w-3" />
             </div>
-            <span className="font-medium text-foreground">Quizzlet</span>
+            <span className="font-medium text-foreground">TentaKung</span>
           </div>
           <p>Built with Next.js, Supabase, and OpenAI</p>
         </div>

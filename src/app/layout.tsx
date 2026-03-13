@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'Quizzlet – Study smarter with AI flashcards',
-  description: 'Create, study, and share AI-powered flashcard decks. Supports flashcard and quiz modes.',
+  title: 'TentaKung – Study smarter with AI flashcards',
+  description: 'Skapa, studera och dela AI-genererade flashcards. Stöder studiläge, quizläge och tenta-läge.',
 }
 
 export default function RootLayout({

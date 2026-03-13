@@ -1,6 +1,6 @@
-# Quizzlet — AI-Powered Flashcard App
+# TentaKung — AI-Powered Flashcard App
 
-A full-stack Quizlet clone built with **Next.js 14 (App Router)**, **Supabase**, **Tailwind CSS**, **Shadcn UI**, and **OpenAI**.
+A full-stack flashcard app built with **Next.js 14 (App Router)**, **Supabase**, **Tailwind CSS**, **Shadcn UI**, and **OpenAI**.
 
 ---
 

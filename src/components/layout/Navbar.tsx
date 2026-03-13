@@ -41,7 +41,7 @@ export default function Navbar({ profile }: NavbarProps) {
             <div className="bg-violet-600 text-white p-1.5 rounded-lg">
               <BookOpen className="h-4 w-4" />
             </div>
-            <span className="text-gray-900 dark:text-white">Quizzlet</span>
+            <span className="text-gray-900 dark:text-white">TentaKung</span>
           </Link>
           <nav className="hidden md:flex items-center gap-1">
             <Link href="/dashboard">
