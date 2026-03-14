@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
-import { BookOpen, Compass, LayoutDashboard, LogOut } from 'lucide-react'
+import { BookOpen, Compass, Info, LayoutDashboard, LogOut } from 'lucide-react'
 import type { Profile } from '@/types/database'
 
 interface NavbarProps {
@@ -56,6 +56,12 @@ export default function Navbar({ profile }: NavbarProps) {
                 Explore
               </Button>
             </Link>
+            <Link href="/om-oss">
+              <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground hover:text-foreground">
+                <Info className="h-4 w-4" />
+                Om oss
+              </Button>
+            </Link>
           </nav>
         </div>
 
@@ -81,6 +87,10 @@ export default function Navbar({ profile }: NavbarProps) {
             <DropdownMenuItem onClick={() => router.push('/explore')}>
               <Compass className="mr-2 h-4 w-4" />
               Explore
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => router.push('/om-oss')}>
+              <Info className="mr-2 h-4 w-4" />
+              Om oss
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem className="text-destructive" onClick={handleSignOut}>
