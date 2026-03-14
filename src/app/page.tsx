@@ -55,12 +55,11 @@ export default async function LandingPage() {
       <main className="max-w-3xl mx-auto px-4 py-20 space-y-20">
         {/* Hero */}
         <section className="text-center space-y-4">
-          <p className="text-sm font-semibold uppercase tracking-widest text-violet-500">Om oss</p>
           <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-gray-900 dark:text-white leading-tight">
-            Vår Vision
+            Välkommen till TentaKung
           </h1>
           <p className="text-xl text-muted-foreground">
-            Välkommen till Tentakung.com – skapat av studenter, för studenter.
+            Tillsammans blir vi alla Tentakungar.
           </p>
         </section>
 
