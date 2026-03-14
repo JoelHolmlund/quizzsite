@@ -110,26 +110,44 @@ export default function FlashcardMode({ cards: initialCards }: FlashcardModeProp
         >
           {/* Front – Question */}
           <div
-            className="absolute inset-0 flex flex-col items-center justify-center rounded-2xl border-2 border-violet-200 dark:border-violet-800 bg-gradient-to-br from-violet-50 to-white dark:from-violet-950/30 dark:to-gray-900 p-8 shadow-lg"
+            className="absolute inset-0 flex flex-col rounded-2xl border-2 border-violet-200 dark:border-violet-800 bg-gradient-to-br from-violet-50 to-white dark:from-violet-950/30 dark:to-gray-900 shadow-lg overflow-hidden"
             style={{ backfaceVisibility: 'hidden' }}
           >
-            <p className="text-xs font-semibold uppercase tracking-widest text-violet-500 mb-4">Question</p>
-            <div className="text-xl font-semibold text-center w-full">
-              <MathContent>{current.question}</MathContent>
+            <div className="shrink-0 px-8 pt-6 pb-2 text-center">
+              <p className="text-xs font-semibold uppercase tracking-widest text-violet-500">Question</p>
             </div>
-            <p className="text-xs text-muted-foreground mt-6">Click to reveal answer</p>
+            <div
+              className="flex-1 overflow-y-auto px-8 py-2 flex flex-col items-center justify-center"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="text-xl font-semibold text-center w-full">
+                <MathContent>{current.question}</MathContent>
+              </div>
+            </div>
+            <div className="shrink-0 px-8 pb-5 pt-2 text-center">
+              <p className="text-xs text-muted-foreground">Click to reveal answer</p>
+            </div>
           </div>
 
           {/* Back – Answer */}
           <div
-            className="absolute inset-0 flex flex-col items-center justify-center rounded-2xl border-2 border-emerald-200 dark:border-emerald-800 bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-950/30 dark:to-gray-900 p-8 shadow-lg"
+            className="absolute inset-0 flex flex-col rounded-2xl border-2 border-emerald-200 dark:border-emerald-800 bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-950/30 dark:to-gray-900 shadow-lg overflow-hidden"
             style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
           >
-            <p className="text-xs font-semibold uppercase tracking-widest text-emerald-500 mb-4">Answer</p>
-            <div className="text-xl font-semibold text-center w-full">
-              <MathContent>{current.answer}</MathContent>
+            <div className="shrink-0 px-8 pt-6 pb-2 text-center">
+              <p className="text-xs font-semibold uppercase tracking-widest text-emerald-500">Answer</p>
             </div>
-            <p className="text-xs text-muted-foreground mt-6">Click to flip back</p>
+            <div
+              className="flex-1 overflow-y-auto px-8 py-2 flex flex-col items-center justify-center"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="text-xl font-semibold text-center w-full">
+                <MathContent>{current.answer}</MathContent>
+              </div>
+            </div>
+            <div className="shrink-0 px-8 pb-5 pt-2 text-center">
+              <p className="text-xs text-muted-foreground">Click to flip back</p>
+            </div>
           </div>
         </div>
       </div>
