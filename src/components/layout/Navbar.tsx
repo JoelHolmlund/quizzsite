@@ -56,7 +56,7 @@ export default function Navbar({ profile }: NavbarProps) {
                 Explore
               </Button>
             </Link>
-            <Link href="/om-oss">
+            <Link href="/">
               <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground hover:text-foreground">
                 <Info className="h-4 w-4" />
                 Om oss
@@ -88,7 +88,7 @@ export default function Navbar({ profile }: NavbarProps) {
               <Compass className="mr-2 h-4 w-4" />
               Explore
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => router.push('/om-oss')}>
+            <DropdownMenuItem onClick={() => router.push('/')}>
               <Info className="mr-2 h-4 w-4" />
               Om oss
             </DropdownMenuItem>
