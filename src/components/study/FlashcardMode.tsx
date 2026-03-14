@@ -1,12 +1,60 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { ChevronLeft, ChevronRight, RotateCcw, Shuffle } from 'lucide-react'
 import type { Card } from '@/types/database'
 import MathContent from '@/components/MathContent'
+
+function ScrollableContent({
+  children,
+  fadeColor,
+}: {
+  children: React.ReactNode
+  fadeColor: string
+}) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [hasMore, setHasMore] = useState(false)
+
+  function checkScroll() {
+    const el = ref.current
+    if (!el) return
+    setHasMore(el.scrollHeight - el.scrollTop - el.clientHeight > 4)
+  }
+
+  useEffect(() => {
+    checkScroll()
+    const el = ref.current
+    if (!el) return
+    const ro = new ResizeObserver(checkScroll)
+    ro.observe(el)
+    return () => ro.disconnect()
+  })
+
+  return (
+    <div className="relative flex-1 min-h-0">
+      <div
+        ref={ref}
+        onScroll={checkScroll}
+        className="h-full overflow-y-auto px-8 py-2"
+      >
+        <div className="min-h-full flex flex-col items-center justify-center">
+          {children}
+        </div>
+      </div>
+      {hasMore && (
+        <div
+          className="pointer-events-none absolute bottom-0 left-0 right-0 h-12"
+          style={{
+            background: `linear-gradient(to bottom, transparent, ${fadeColor})`,
+          }}
+        />
+      )}
+    </div>
+  )
+}
 
 interface FlashcardModeProps {
   cards: Card[]
@@ -116,13 +164,11 @@ export default function FlashcardMode({ cards: initialCards }: FlashcardModeProp
             <div className="shrink-0 px-8 pt-6 pb-2 text-center">
               <p className="text-xs font-semibold uppercase tracking-widest text-violet-500">Question</p>
             </div>
-            <div className="flex-1 overflow-y-auto px-8 py-2">
-              <div className="min-h-full flex flex-col items-center justify-center">
-                <div className="text-xl font-semibold text-center w-full">
-                  <MathContent>{current.question}</MathContent>
-                </div>
+            <ScrollableContent fadeColor="rgb(245 243 255 / 0.95)">
+              <div className="text-xl font-semibold text-center w-full">
+                <MathContent>{current.question}</MathContent>
               </div>
-            </div>
+            </ScrollableContent>
             <div className="shrink-0 px-8 pb-5 pt-2 text-center">
               <p className="text-xs text-muted-foreground">Click to reveal answer</p>
             </div>
@@ -136,13 +182,11 @@ export default function FlashcardMode({ cards: initialCards }: FlashcardModeProp
             <div className="shrink-0 px-8 pt-6 pb-2 text-center">
               <p className="text-xs font-semibold uppercase tracking-widest text-emerald-500">Answer</p>
             </div>
-            <div className="flex-1 overflow-y-auto px-8 py-2">
-              <div className="min-h-full flex flex-col items-center justify-center">
-                <div className="text-xl font-semibold text-center w-full">
-                  <MathContent>{current.answer}</MathContent>
-                </div>
+            <ScrollableContent fadeColor="rgb(240 253 244 / 0.95)">
+              <div className="text-xl font-semibold text-center w-full">
+                <MathContent>{current.answer}</MathContent>
               </div>
-            </div>
+            </ScrollableContent>
             <div className="shrink-0 px-8 pb-5 pt-2 text-center">
               <p className="text-xs text-muted-foreground">Click to flip back</p>
             </div>
