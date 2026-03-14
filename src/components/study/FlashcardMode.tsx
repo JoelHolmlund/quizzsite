@@ -116,12 +116,11 @@ export default function FlashcardMode({ cards: initialCards }: FlashcardModeProp
             <div className="shrink-0 px-8 pt-6 pb-2 text-center">
               <p className="text-xs font-semibold uppercase tracking-widest text-violet-500">Question</p>
             </div>
-            <div
-              className="flex-1 overflow-y-auto px-8 py-2 flex flex-col items-center justify-center"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="text-xl font-semibold text-center w-full">
-                <MathContent>{current.question}</MathContent>
+            <div className="flex-1 overflow-y-auto px-8 py-2">
+              <div className="min-h-full flex flex-col items-center justify-center">
+                <div className="text-xl font-semibold text-center w-full">
+                  <MathContent>{current.question}</MathContent>
+                </div>
               </div>
             </div>
             <div className="shrink-0 px-8 pb-5 pt-2 text-center">
@@ -137,12 +136,11 @@ export default function FlashcardMode({ cards: initialCards }: FlashcardModeProp
             <div className="shrink-0 px-8 pt-6 pb-2 text-center">
               <p className="text-xs font-semibold uppercase tracking-widest text-emerald-500">Answer</p>
             </div>
-            <div
-              className="flex-1 overflow-y-auto px-8 py-2 flex flex-col items-center justify-center"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="text-xl font-semibold text-center w-full">
-                <MathContent>{current.answer}</MathContent>
+            <div className="flex-1 overflow-y-auto px-8 py-2">
+              <div className="min-h-full flex flex-col items-center justify-center">
+                <div className="text-xl font-semibold text-center w-full">
+                  <MathContent>{current.answer}</MathContent>
+                </div>
               </div>
             </div>
             <div className="shrink-0 px-8 pb-5 pt-2 text-center">
