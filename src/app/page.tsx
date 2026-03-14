@@ -52,7 +52,7 @@ export default async function LandingPage() {
         </header>
       )}
 
-      <main className="max-w-3xl mx-auto px-4 py-20 space-y-20">
+      <main className="max-w-3xl mx-auto px-4 pt-10 pb-16 space-y-12">
         {/* Hero */}
         <section className="text-center space-y-4">
           <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-gray-900 dark:text-white leading-tight">
